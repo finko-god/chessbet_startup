@@ -1,0 +1,45 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  gamesCreated Game[] @relation("GameCreator")
+  gamesJoined  Game[] @relation("GamePlayer")
+}
+
+model Game {
+  id          String   @id @default(uuid())
+  player1Id   String
+  player2Id   String?
+  whitePlayerId String?  // ID of the player playing as white
+  blackPlayerId String?  // ID of the player playing as black
+  player1     User     @relation("GameCreator", fields: [player1Id], references: [id])
+  player2     User?    @relation("GamePlayer", fields: [player2Id], references: [id])
+  betAmount   Int      // The bet amount for the game
+  status      String   // "waiting", "started", "finished"
+  fen         String?  // Current board position in FEN notation
+  pgn         String?  // Full game history in PGN format
+  winner      String?  // ID of the winner (if game is finished)
+  player1TimeLeft Int?     // Time left in milliseconds for white player (creator)
+  player2TimeLeft Int?     // Time left in milliseconds for black player (joiner)
+  lastMoveAt     DateTime? // Timestamp of the last move
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

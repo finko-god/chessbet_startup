@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Game" ADD COLUMN "fen" TEXT;
+ALTER TABLE "Game" ADD COLUMN "pgn" TEXT;
+ALTER TABLE "Game" ADD COLUMN "winner" TEXT;
