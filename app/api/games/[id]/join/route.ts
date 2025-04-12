@@ -76,19 +76,48 @@ export async function POST(
         );
       }
 
-      const updatedGame = await prisma.game.update({
-        where: {
-          id: gameId,
-        },
-        data: {
-          player2Id: decoded.id,
-          blackPlayerId: decoded.id,
-          status: 'started',
-        },
-        include: {
-          player1: true,
-          player2: true,
-        },
+      // Check if joining player has enough ChessCoins
+      const joiningPlayer = await prisma.user.findUnique({
+        where: { id: decoded.id }
+      });
+
+      if (!joiningPlayer) {
+        return NextResponse.json(
+          { error: 'User not found' },
+          { status: 404 }
+        );
+      }
+
+      if (joiningPlayer.chessCoin < game.betAmount) {
+        return NextResponse.json(
+          { error: 'Insufficient ChessCoins to join this game' },
+          { status: 400 }
+        );
+      }
+
+      // Update game and deduct ChessCoins in a transaction
+      const updatedGame = await prisma.$transaction(async (tx) => {
+        // Deduct ChessCoins from joining player
+        await tx.user.update({
+          where: { id: decoded.id },
+          data: { chessCoin: { decrement: game.betAmount } }
+        });
+
+        // Update the game
+        return tx.game.update({
+          where: {
+            id: gameId,
+          },
+          data: {
+            player2Id: decoded.id,
+            blackPlayerId: decoded.id,
+            status: 'started',
+          },
+          include: {
+            player1: true,
+            player2: true,
+          },
+        });
       });
 
       // Return the data needed for both players to be redirected

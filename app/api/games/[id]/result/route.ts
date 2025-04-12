@@ -68,18 +68,44 @@ export async function POST(
       }
 
       // Update game with result and winner
-      const updatedGame = await prisma.game.update({
-        where: { id: gameId },
-        data: {
-          status: 'finished',
-          winner: winnerId,
-        },
-      })
+      const updatedGame = await prisma.$transaction(async (tx) => {
+        // Update game status
+        const game = await tx.game.update({
+          where: { id: gameId },
+          data: {
+            status: 'finished',
+            winner: winnerId,
+          },
+        });
+
+        // Handle ChessCoin transfers
+        if (winnerId) {
+          // Winner gets their bet back plus the opponent's bet (total of 2x the bet)
+          await tx.user.update({
+            where: { id: winnerId },
+            data: { chessCoin: { increment: game.betAmount  } }
+          });
+        } else {
+          // In case of a draw, return ChessCoins to both players
+          await tx.user.update({
+            where: { id: game.player1Id },
+            data: { chessCoin: { increment: game.betAmount } }
+          });
+          if (game.player2Id) {
+            await tx.user.update({
+              where: { id: game.player2Id },
+              data: { chessCoin: { increment: game.betAmount } }
+            });
+          }
+        }
+
+        return game;
+      });
 
       return NextResponse.json({
         message: 'Game result recorded successfully',
         game: updatedGame,
-        resultDetails: result, // Return the result details even if not stored in DB
+        resultDetails: result,
       })
     } catch (jwtError) {
       console.error('Token verification error:', jwtError)
@@ -95,4 +121,4 @@ export async function POST(
       { status: 500 }
     )
   }
-} 
+}

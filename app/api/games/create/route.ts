@@ -18,7 +18,6 @@ export async function POST(request: Request) {
       ?.split('=')[1];
     
     if (!token) {
-      console.log('Unauthorized - No token');
       return NextResponse.json(
         { error: 'You must be logged in to create a game' },
         { status: 401 }
@@ -30,7 +29,6 @@ export async function POST(request: Request) {
       const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
       
       if (!decoded.id) {
-        console.log('Unauthorized - Invalid token');
         return NextResponse.json(
           { error: 'Invalid authentication' },
           { status: 401 }
@@ -46,42 +44,56 @@ export async function POST(request: Request) {
         );
       }
 
-      // Verify user exists in database
+      // Verify user exists in database and has enough ChessCoins
       const user = await prisma.user.findUnique({
         where: { id: decoded.id }
       });
 
       if (!user) {
-        console.log('Unauthorized - User not found in database');
         return NextResponse.json(
           { error: 'User not found' },
           { status: 401 }
         );
       }
 
-      const game = await prisma.game.create({
-        data: {
-          player1Id: decoded.id,
-          whitePlayerId: decoded.id,
-          betAmount,
-          status: 'waiting',
-          ...(true as any && {
-            player1TimeLeft: FIVE_MINUTES_MS,
-            player2TimeLeft: FIVE_MINUTES_MS,
-          })
-        },
+      if (user.chessCoin < betAmount) {
+        return NextResponse.json(
+          { error: 'Insufficient ChessCoins to create this game' },
+          { status: 400 }
+        );
+      }
+
+      // Create game and deduct ChessCoins in a transaction
+      const game = await prisma.$transaction(async (tx) => {
+        // Deduct ChessCoins from user
+        await tx.user.update({
+          where: { id: decoded.id },
+          data: { chessCoin: { decrement: betAmount } }
+        });
+
+        // Create the game
+        return tx.game.create({
+          data: {
+            player1Id: decoded.id,
+            whitePlayerId: decoded.id,
+            betAmount,
+            status: 'waiting',
+            ...(true as any && {
+              player1TimeLeft: FIVE_MINUTES_MS,
+              player2TimeLeft: FIVE_MINUTES_MS,
+            })
+          },
+        });
       });
 
       return NextResponse.json(game);
     } catch (jwtError) {
-      console.error('Token verification error:', jwtError);
       return NextResponse.json(
         { error: 'Invalid authentication' },
         { status: 401 }
       );
     }
   } catch (error) {
-    console.error('Error creating game:', error);
     return NextResponse.json(
       { error: 'Failed to create game. Please try again.' },
       { status: 500 }

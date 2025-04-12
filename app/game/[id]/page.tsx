@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import ChessBoard from '@/app/components/ChessBoard'
 import ChessClock from '@/app/components/ChessClock'
 import { use } from 'react'
+import { X } from 'lucide-react'
+import { Alert, AlertDescription } from '@/app/components/ui/alert'
 
 
 interface User {
@@ -50,6 +52,7 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   const [finishMessage, setFinishMessage] = useState<string | null>(null)
   const [gameResult, setGameResult] = useState<{ winner: string | null, reason: string } | null>(null)
   const [redirectedFromJoin, setRedirectedFromJoin] = useState(false)
+  const [joiningGame, setJoiningGame] = useState(false)
   
   const router = useRouter()
 
@@ -138,22 +141,40 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   }
 
   const handleJoinGame = async () => {
+    setJoiningGame(true);
+    setError(null);
+    
     try {
       const response = await fetch(`/api/games/${gameId}/join`, {
         method: 'POST',
         credentials: 'include',
-      })
-
+      });
+  
+      let responseData;
+      try {
+        responseData = await response.json();
+      } catch (parseError) {
+        console.error('Error parsing response:', parseError);
+        setError('Failed to join game: invalid response from server');
+        setJoiningGame(false);
+        return;
+      }
+  
       if (response.ok) {
         // Add a flag to URL to remember we just joined
-        window.location.href = `/game/${gameId}?joined=true`
+        window.location.href = `/game/${gameId}?joined=true`;
       } else {
-        const error = await response.json()
-        setError(error.error || 'Failed to join game')
+        if (responseData.error && responseData.error.includes('Insufficient ChessCoins')) {
+          setError('You don\'t have enough ChessCoins to join this game. Please check your balance in your account page.');
+        } else {
+          setError(responseData.error || 'Failed to join game');
+        }
       }
     } catch (error) {
-      console.error('Error joining game:', error)
-      setError('Failed to join game')
+      console.error('Error joining game:', error);
+      setError('Failed to join game: network or server error');
+    } finally {
+      setJoiningGame(false);
     }
   }
 
@@ -227,6 +248,10 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     }
   }
 
+  const handleDismissError = () => {
+    setError(null)
+  }
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4">
@@ -239,14 +264,79 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   if (error) {
     return (
       <div className="container mx-auto p-4">
-        <Card>
-          <CardContent className="p-6">
-            <p className="text-red-500">{error}</p>
-            <Button onClick={() => router.push('/')} className="mt-4">
-              Return to Lobby
-            </Button>
-          </CardContent>
-        </Card>
+        <Alert variant="warning" className="mb-4">
+          <AlertDescription>{error}</AlertDescription>
+          <Button variant="ghost" size="sm" className="absolute top-2 right-2" onClick={handleDismissError}>
+            <X size={16} />
+          </Button>
+        </Alert>
+        {game ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="md:col-span-2">
+              <ChessBoard
+                gameId={gameId}
+                player1Id={game.player1.id}
+                player2Id={game.player2?.id}
+                whitePlayerId={game.whitePlayerId}
+                blackPlayerId={game.blackPlayerId}
+                initialFen={game.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
+                initialPgn={game.pgn}
+                onGameEnd={handleGameEnd}
+                isWhitePlayer={user?.id === game.whitePlayerId}
+                isGameStarted={game.status === 'started'}
+              />
+            </div>
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Game Info</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    <p>Player 1: {game.player1.name}</p>
+                    <p>Player 2: {game.player2?.name || 'Waiting...'}</p>
+                    <p>Bet Amount: ${game.betAmount}</p>
+                    <p>Status: {game.status}</p>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <ChessClock
+                gameId={gameId}
+                isWhitePlayer={user?.id === game.whitePlayerId}
+                whiteTime={game.player1TimeLeft || 300000}
+                blackTime={game.player2TimeLeft || 300000}
+                isWhiteTurn={!game.fen || game.fen.split(' ')[1] === 'w'}
+                isGameStarted={game.status === 'started'}
+                onTimeEndAction={handleTimeEnd}
+              />
+
+              {game.status === 'waiting' && !game.player2 && (
+                <Button 
+                  onClick={handleJoinGame} 
+                  className="w-full"
+                  disabled={joiningGame}
+                >
+                  {joiningGame ? 'Joining...' : 'Join Game'}
+                </Button>
+              )}
+
+              {game.status === 'started' && (
+                <Button 
+                  onClick={handleFinishGame} 
+                  className="w-full"
+                  disabled={isFinishing}
+                >
+                  {isFinishing ? 'Finishing...' : 'Finish Game'}
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <Button onClick={() => router.push('/')} className="mt-4">
+            Return to Lobby
+          </Button>
+        )}
       </div>
     )
   }
@@ -355,8 +445,12 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
           />
 
           {game.status === 'waiting' && !game.player2 && (
-            <Button onClick={handleJoinGame} className="w-full">
-              Join Game
+            <Button 
+              onClick={handleJoinGame} 
+              className="w-full"
+              disabled={joiningGame}
+            >
+              {joiningGame ? 'Joining...' : 'Join Game'}
             </Button>
           )}
 
