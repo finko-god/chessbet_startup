@@ -1,84 +1,109 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { useRouter } from 'next/navigation';
+import ChessCoinBalance from '@/app/components/ChessCoinBalance';
+import { useState, useEffect } from 'react';
 
-export function Header() {
+export default function Header() {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
+  const pathname = usePathname();
 
   useEffect(() => {
-    const checkAuth = async () => {
+    const fetchUser = async () => {
       try {
         const response = await fetch('/api/auth/me', {
           credentials: 'include',
         });
-        
         if (response.ok) {
           const userData = await response.json();
           setUser(userData);
-        } else {
-          setUser(null);
         }
       } catch (error) {
-        console.error('Error checking auth:', error);
-        setUser(null);
+        console.error('Error fetching user:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
-    checkAuth();
+    fetchUser();
   }, []);
 
   const handleSignOut = async () => {
     try {
-      await fetch('/api/auth/signout', {
+      const response = await fetch('/api/auth/signout', {
         method: 'POST',
         credentials: 'include',
       });
-      
-      setUser(null);
-      router.push('/signin');
-      // Force refresh to clear UI state
-      window.location.reload();
+      if (response.ok) {
+        window.location.href = '/';
+      }
     } catch (error) {
       console.error('Error signing out:', error);
     }
   };
 
+  const isActive = (path: string) => pathname === path;
+
   return (
-    <header className="bg-white shadow-sm">
-      <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-        <Link href="/" className="text-xl font-bold">
-          ChessBet
-        </Link>
-        <nav className="flex items-center space-x-4">
-          {isLoading ? (
-            <div>Loading...</div>
-          ) : user ? (
-            <>
-              <Link href="/account">
-                <Button variant="ghost">Account</Button>
+    <header className="bg-background border-b border-border">
+      <div className="container mx-auto py-2">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center space-x-8">
+            <Link href="/" className="flex items-center">
+              <span className="text-xl font-bold text-primary">ChessBet</span>
+            </Link>
+            <nav className="hidden md:flex space-x-4">
+              <Link
+                href="/"
+                className={`text-md font-medium transition-colors hover:text-primary ${
+                  isActive('/') ? 'text-primary' : 'text-muted-foreground'
+                }`}
+              >
+                Play
               </Link>
-              <Button variant="ghost" onClick={handleSignOut}>
-                Sign Out
-              </Button>
-            </>
-          ) : (
-            <>
-              <Link href="/signin">
-                <Button variant="ghost">Sign In</Button>
-              </Link>
-              <Link href="/signup">
-                <Button variant="ghost">Sign Up</Button>
-              </Link>
-            </>
-          )}
-        </nav>
+ 
+            </nav>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            {isLoading ? (
+              <div className="text-muted-foreground">Loading...</div>
+            ) : user ? (
+              <>
+                <div className="hidden text-primary md:flex items-center space-x-2">
+                  {/* <ChessCoinBalance /> */}
+                </div>
+                <Link href="/account">
+                  <Button variant="ghost" size="sm" className="hover:text-muted-foreground text-primary">
+                    Account
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="hover:text-muted-foreground text-primary"
+                >
+                  Sign Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Link href="/signin">
+                  <Button className='px-5 py-2' size="sm"  >
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button className='px-4' size="sm">Sign Up</Button>
+                </Link>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </header>
   );

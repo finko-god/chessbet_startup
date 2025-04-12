@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { Chess, Square } from 'chess.js'
 import { useRouter } from 'next/navigation'
+import './chess.css'
 
 type ChessBoardProps = {
   gameId: string
@@ -46,6 +47,11 @@ export default function ChessBoard({
   const [firstMoveMade, setFirstMoveMade] = useState(false)
   const router = useRouter()
   const [gameState, setGameState] = useState<any>(null)
+  const [selectedPiece, setSelectedPiece] = useState<string | null>(null)
+  const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null)
+  const [inCheck, setInCheck] = useState(false)
+  const [kingSquare, setKingSquare] = useState<string | null>(null)
+  const [boardWidth, setBoardWidth] = useState(400)
   
   // Fetch current user on mount
   useEffect(() => {
@@ -122,6 +128,16 @@ export default function ChessBoard({
       }
       setGame(newChess);
       setCurrentPosition(newGameState.fen);
+      
+      // Update last move for highlighting
+      const history = newChess.history({ verbose: true });
+      if (history.length > 0) {
+        const lastMoveItem = history[history.length - 1];
+        setLastMove({
+          from: lastMoveItem.from,
+          to: lastMoveItem.to
+        });
+      }
     } catch (error) {
       console.error('Error updating game state:', error);
       setIllegalMoveError(error instanceof Error ? error.message : 'Invalid move');
@@ -148,6 +164,16 @@ export default function ChessBoard({
         const newChess = new Chess()
         if (newGameState.pgn) {
           newChess.loadPgn(newGameState.pgn)
+          
+          // Update last move for highlighting
+          const history = newChess.history({ verbose: true });
+          if (history.length > 0) {
+            const lastMoveItem = history[history.length - 1];
+            setLastMove({
+              from: lastMoveItem.from,
+              to: lastMoveItem.to
+            });
+          }
         }
         setGame(newChess)
         setCurrentPosition(newGameState.fen)
@@ -202,6 +228,16 @@ export default function ChessBoard({
         loadedGame.loadPgn(initialPgn);
         setGame(loadedGame);
         setCurrentPosition(loadedGame.fen());
+        
+        // Set last move for highlighting
+        const history = loadedGame.history({ verbose: true });
+        if (history.length > 0) {
+          const lastMoveItem = history[history.length - 1];
+          setLastMove({
+            from: lastMoveItem.from,
+            to: lastMoveItem.to
+          });
+        }
         console.log('Loaded game from PGN');
       } else if (initialFen) {
         const loadedGame = new Chess(initialFen);
@@ -214,7 +250,7 @@ export default function ChessBoard({
     }
   }, [initialFen, initialPgn]);
   
-  // Handle piece moves
+  // Handle piece move
   function onDrop(sourceSquare: string, targetSquare: string) {
     if (!isGameStarted) return false
     if (!isPlayerTurn) return false
@@ -226,7 +262,7 @@ export default function ChessBoard({
       const move = game.move({
         from: sourceSquare,
         to: targetSquare,
-        promotion: 'q',
+        promotion: 'q',  // Always promote to queen for simplicity
       })
 
       if (move === null) return false
@@ -239,6 +275,15 @@ export default function ChessBoard({
         setFirstMoveMade(true)
       }
       
+      // Clear option squares after move
+      setOptionSquares({})
+      
+      // Update last move for highlighting
+      setLastMove({
+        from: sourceSquare,
+        to: targetSquare
+      })
+      
       return true
     } catch (error) {
       return false
@@ -246,135 +291,239 @@ export default function ChessBoard({
   }
   
   // Show possible moves when piece is clicked
+  function onSquareClick(square: Square) {
+    if (!isGameStarted || !isPlayerTurn) return
+    
+    // If we already have a selected piece
+    if (selectedPiece) {
+      // Try to make a move
+      const move = game.move({
+        from: selectedPiece,
+        to: square,
+        promotion: 'q',  // Always promote to queen for simplicity
+      })
+      
+      // If move is valid
+      if (move !== null) {
+        // Update game state
+        updateGameState(move.san, !firstMoveMade && game.turn() === 'w')
+        
+        // Clear selected piece and option squares
+        setSelectedPiece(null)
+        setOptionSquares({})
+        
+        // Update last move for highlighting
+        setLastMove({
+          from: selectedPiece,
+          to: square
+        })
+        
+        return
+      }
+      
+      // If the click is on the same square, deselect
+      if (square === selectedPiece) {
+        setSelectedPiece(null)
+        setOptionSquares({})
+        return
+      }
+      
+      // If click is on another piece of the same color, select that piece instead
+      const piece = game.get(square)
+      if (piece && 
+          ((piece.color === 'w' && game.turn() === 'w') || 
+           (piece.color === 'b' && game.turn() === 'b'))) {
+        setSelectedPiece(square)
+        showPossibleMoves(square)
+        return
+      }
+    }
+    
+    // Check if the clicked square has a piece that can be moved
+    const piece = game.get(square)
+    if (piece && 
+        ((piece.color === 'w' && game.turn() === 'w') || 
+         (piece.color === 'b' && game.turn() === 'b'))) {
+      setSelectedPiece(square)
+      showPossibleMoves(square)
+    }
+  }
+  
+  // Show possible moves for a piece
+  function showPossibleMoves(square: Square) {
+    const moves = game.moves({
+      square: square,
+      verbose: true,
+    })
+    
+    if (moves.length > 0) {
+      const newSquares: Record<string, any> = {}
+      moves.forEach((move) => {
+        // Different styling for captures vs. regular moves
+        if (move.captured) {
+          newSquares[move.to] = {
+            background: 'radial-gradient(circle, transparent 70%, rgba(255, 255, 255, 0.8) 70%)',
+            borderRadius: '0',
+          }
+        } else {
+          newSquares[move.to] = {
+            background: 'radial-gradient(circle, rgba(255, 255, 255, 0.8) 25%, transparent 25%)',
+            borderRadius: '0',
+          }
+        }
+      })
+      setOptionSquares(newSquares)
+    }
+  }
+  
+  // Handle piece drag begin
   function onPieceDragBegin(piece: string, sourceSquare: string) {
-    if (!isPlayerTurn) return;
+    if (!isPlayerTurn) return
     
     // Get all possible moves for the piece
     const moves = game.moves({
       square: sourceSquare as Square,
       verbose: true,
-    });
+    })
     
     // Highlight valid target squares
     if (moves.length > 0) {
-      const newSquares: Record<string, any> = {};
+      const newSquares: Record<string, any> = {}
       moves.forEach((move: any) => {
-        newSquares[move.to] = {
-          background: 'rgba(255, 255, 0, 0.4)',
-          borderRadius: '50%',
-        };
-      });
-      setOptionSquares(newSquares);
+        // Different styling for captures vs. regular moves
+        if (move.captured) {
+          newSquares[move.to] = {
+            background: 'radial-gradient(circle, transparent 70%, rgba(255, 255, 255, 0.8) 70%)',
+            borderRadius: '0',
+          }
+        } else {
+          newSquares[move.to] = {
+            background: 'radial-gradient(circle, rgba(255, 255, 255, 0.8) 25%, transparent 25%)',
+            borderRadius: '0',
+          }
+        }
+      })
+      setOptionSquares(newSquares)
     }
   }
   
   function onPieceDragEnd() {
-    setOptionSquares({});
+    setOptionSquares({})
   }
   
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Turn indicator - now with more prominent styling */}
-      <div className="bg-gray-100 p-4 rounded-lg shadow-md text-center mb-4 border-2 border-gray-300">
-        <div className="flex justify-center items-center gap-3">
-          <div className={`w-8 h-8 rounded-full border-2 ${game.turn() === 'w' ? 'bg-white border-black' : 'bg-black border-gray-400'}`}></div>
-          <span className="text-xl font-bold">
-            {game.turn() === 'w' ? "White's Move" : "Black's Move"}
-          </span>
-        </div>
-      </div>
+  useEffect(() => {
+    // Update board width based on container size
+    const updateBoardWidth = () => {
+      const container = document.querySelector('.chess-board-container');
+      if (container) {
+        const containerWidth = container.clientWidth;
+        const containerHeight = window.innerHeight;
+        // For mobile, use 90% of the smaller dimension to ensure the board fits
+        const maxSize = Math.min(containerWidth, containerHeight * 0.9);
+        setBoardWidth(Math.min(maxSize, 600));
+      }
+    };
 
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className={`w-full max-w-md mx-auto ${isShaking ? 'animate-shake' : ''}`}>
+    updateBoardWidth();
+    window.addEventListener('resize', updateBoardWidth);
+    return () => window.removeEventListener('resize', updateBoardWidth);
+  }, []);
+
+  useEffect(() => {
+    // Check if king is in check
+    if (!game) return
+    
+    const turn = game.turn()
+    const isInCheck = game.inCheck()
+    setInCheck(isInCheck)
+    
+    if (isInCheck) {
+      // Find king's position
+      const board = game.board()
+      for (let i = 0; i < 8; i++) {
+        for (let j = 0; j < 8; j++) {
+          const piece = board[i][j]
+          if (piece && piece.type === 'k' && piece.color === turn) {
+            const files = 'abcdefgh'
+            const square = files[j] + (8 - i)
+            setKingSquare(square)
+            return
+          }
+        }
+      }
+    } else {
+      setKingSquare(null)
+    }
+  }, [game])
+  
+  return (
+    <div className="chess-board-container w-full max-w-[600px] mx-auto">
+      <div className="flex flex-col lg:flex-row gap-4">
+        <div className="w-full aspect-square">
           <Chessboard
-            id={`game-${gameId}`}
-            boardWidth={400}
-            position={currentPosition}
+            position={game.fen()}
             onPieceDrop={onDrop}
+            onSquareClick={onSquareClick}
             onPieceDragBegin={onPieceDragBegin}
             onPieceDragEnd={onPieceDragEnd}
+            customBoardStyle={{
+              borderRadius: '4px',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+            }}
+            customDarkSquareStyle={{ backgroundColor: '#779556' }}
+            customLightSquareStyle={{ backgroundColor: '#ebecd0' }}
             customSquareStyles={{
               ...moveSquares,
               ...optionSquares,
+              ...(selectedPiece ? {
+                [selectedPiece]: { backgroundColor: 'rgba(98, 153, 36, 0.2)' }
+              } : {}),
+              ...(lastMove ? {
+                [lastMove.from]: { backgroundColor: 'rgba(98, 153, 36, 0.15)' },
+                [lastMove.to]: { backgroundColor: 'rgba(98, 153, 36, 0.15)' }
+              } : {}),
+              ...(inCheck && kingSquare ? {
+                [kingSquare]: { backgroundColor: 'rgba(204, 51, 51, 0.2)' }
+              } : {})
             }}
-            boardOrientation={isWhite ? 'white' : isBlack ? 'black' : 'white'}
+            boardWidth={boardWidth}
+            areArrowsAllowed={false}
+            showBoardNotation={true}
+            arePiecesDraggable={isGameStarted && isPlayerTurn}
+            customArrowColor="rgba(98, 153, 36, 0.5)"
+            boardOrientation={isWhitePlayer ? 'white' : 'black'}
           />
-          <div className="mt-4 text-center">
-            {connectionError && (
-              <p className="text-red-500">
-                {connectionError}
-              </p>
-            )}
-            {illegalMoveError && (
-              <p className="text-red-500 animate-fade-in">
-                {illegalMoveError}
-              </p>
-            )}
-            <div className="space-y-2">
-              <p className={isPlayerTurn ? "text-green-600 font-medium" : "text-gray-600"}>
-                {isPlayerTurn ? "Your turn" : "Waiting for opponent's move"}
-              </p>
-              <p className="text-gray-500">
-                You are playing as {isWhite ? 'White' : isBlack ? 'Black' : 'Spectator'}
-              </p>
+        </div>
+        
+        {/* <div className="w-full lg:w-64 bg-card rounded-lg p-4">
+          <div className="mb-4">
+            <div className={`text-sm font-medium mb-2 ${game.turn() === 'w' ? 'text-green-600' : 'text-gray-600'}`}>
+              {game.turn() === 'w' ? 'White to move' : 'Black to move'}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              {isPlayerTurn ? 'Your turn' : 'Opponent\'s turn'}
             </div>
           </div>
-        </div>
-
-        {/* Move History Panel */}
-        <div className="w-full md:w-64 bg-white p-4 rounded-lg shadow-md border border-gray-200">
-          <h3 className="text-lg font-semibold mb-4">Move History</h3>
-          <div className="max-h-[500px] overflow-y-auto">
-            {moveHistory.length > 0 ? (
-              <div className="space-y-2">
-                {Array.from({ length: Math.ceil(moveHistory.length / 2) }).map((_, index) => {
-                  const whiteMove = moveHistory[index * 2];
-                  const blackMove = moveHistory[index * 2 + 1];
-                  return (
-                    <div key={index} className="flex items-center gap-2">
-                      <span className="w-8 text-gray-500">{index + 1}.</span>
-                      <span className="flex-1 bg-gray-100 p-1 rounded">{whiteMove}</span>
-                      {blackMove && (
-                        <span className="flex-1 bg-gray-100 p-1 rounded">{blackMove}</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <p className="text-gray-500">No moves yet</p>
-            )}
+          
+          <div className="h-[300px] overflow-y-auto move-history">
+            <div className="text-sm font-medium mb-2">Move History</div>
+            <div className="space-y-1">
+              {moveHistory.map((move, index) => {
+                // Clean up the move by removing any asterisks and other PGN annotations
+                const cleanMove = move.replace(/[!?+#*]/g, '');
+                return (
+                  <div key={index} className="move-item">
+                    <span className="move-number">{Math.floor(index / 2) + 1}.</span>
+                    <span className="move-text">
+                      {cleanMove}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      </div>
-
-      {/* Game Status and Actions */}
-      <div className="mt-4 text-center">
-        {game.isCheckmate() && (
-          <div className="mb-4">
-            <p className="text-xl font-bold text-red-600">
-              Checkmate! {game.turn() === 'w' ? 'Black' : 'White'} wins!
-            </p>
-            <button
-              onClick={() => router.push('/')}
-              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Go to Lobby
-            </button>
-          </div>
-        )}
-        {game.isDraw() && (
-          <div className="mb-4">
-            <p className="text-xl font-bold text-gray-600">Game ended in a draw!</p>
-            <button
-              onClick={() => router.push('/')}
-              className="mt-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
-            >
-              Go to Lobby
-            </button>
-          </div>
-        )}
+        </div> */}
       </div>
     </div>
-  );
+  )
 }

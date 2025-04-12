@@ -59,6 +59,14 @@ export async function POST(
         )
       }
 
+      // Check if game is already finished
+      if (game.status === 'finished') {
+        return NextResponse.json(
+          { error: 'Game is already finished' },
+          { status: 400 }
+        )
+      }
+
       // Verify user is a participant
       if (game.player1Id !== userId && game.player2Id !== userId) {
         return NextResponse.json(
@@ -69,6 +77,16 @@ export async function POST(
 
       // Update game with result and winner
       const updatedGame = await prisma.$transaction(async (tx) => {
+        // First, check again if game is finished (to prevent race conditions)
+        const currentGame = await tx.game.findUnique({
+          where: { id: gameId },
+          select: { status: true }
+        });
+
+        if (currentGame?.status === 'finished') {
+          throw new Error('Game is already finished');
+        }
+
         // Update game status
         const game = await tx.game.update({
           where: { id: gameId },
@@ -80,21 +98,54 @@ export async function POST(
 
         // Handle ChessCoin transfers
         if (winnerId) {
-          // Winner gets their bet back plus the opponent's bet (total of 2x the bet)
-          await tx.user.update({
+          // Get current balances
+          const winner = await tx.user.findUnique({
             where: { id: winnerId },
-            data: { chessCoin: { increment: game.betAmount  } }
+            select: { chessCoin: true }
           });
+          const loserId = game.player1Id === winnerId ? game.player2Id : game.player1Id;
+          const loser = loserId ? await tx.user.findUnique({
+            where: { id: loserId },
+            select: { chessCoin: true }
+          }) : null;
+
+          if (winner) {
+            // Update winner's balance (add both bets)
+            await tx.user.update({
+              where: { id: winnerId },
+              data: { chessCoin: winner.chessCoin + game.betAmount }
+            });
+          }
+
+          if (loser && loserId) {
+            // Update loser's balance (subtract their bet)
+            await tx.user.update({
+              where: { id: loserId },
+              data: { chessCoin: Math.max(0, loser.chessCoin - game.betAmount) }
+            });
+          }
         } else {
           // In case of a draw, return ChessCoins to both players
-          await tx.user.update({
+          const player1 = await tx.user.findUnique({
             where: { id: game.player1Id },
-            data: { chessCoin: { increment: game.betAmount } }
+            select: { chessCoin: true }
           });
-          if (game.player2Id) {
+          const player2 = game.player2Id ? await tx.user.findUnique({
+            where: { id: game.player2Id },
+            select: { chessCoin: true }
+          }) : null;
+
+          if (player1) {
+            await tx.user.update({
+              where: { id: game.player1Id },
+              data: { chessCoin: player1.chessCoin + game.betAmount }
+            });
+          }
+
+          if (player2 && game.player2Id) {
             await tx.user.update({
               where: { id: game.player2Id },
-              data: { chessCoin: { increment: game.betAmount } }
+              data: { chessCoin: player2.chessCoin + game.betAmount }
             });
           }
         }

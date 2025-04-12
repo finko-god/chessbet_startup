@@ -130,12 +130,13 @@ export default function Lobby() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="container py-8 space-y-8">
       <Toast
         message="Insufficient ChessCoins! Please check your balance in the account page."
         isOpen={showToast}
         onClose={() => setShowToast(false)}
       />
+      
       {error && !showToast && (
         <Alert variant="warning" className="relative">
           <AlertDescription>{error}</AlertDescription>
@@ -144,62 +145,76 @@ export default function Lobby() {
           </Button>
         </Alert>
       )}
-      <Card>
-        <CardHeader>
-          <CardTitle>Create New Game</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="betAmount">Bet Amount (ChessCoins)</Label>
-              <Input
-                id="betAmount"
-                type="number"
-                min="1"
-                value={betAmount}
-                onChange={(e) => setBetAmount(e.target.value)}
-                placeholder="Enter bet amount"
-              />
-            </div>
-            <Button 
-              onClick={handleCreateGame} 
-              disabled={isCreating}
-              className="w-full"
-            >
-              {isCreating ? 'Creating...' : 'Create Game'}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
-      {games.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Available Games</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {games.filter(game => game.status === 'waiting').map((game) => (
-                <div key={game.id} className="flex items-center justify-between p-4 bg-secondary/20 rounded-lg">
-                  <div>
-                    <p className="font-medium">{game.player1.name}'s Game</p>
-                    <p className="text-sm text-muted-foreground">Bet: {game.betAmount} ChessCoins</p>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          <Card className="bg-card">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-foreground">Available Games</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {games.filter(game => game.status === 'waiting').length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground">No games available to join</p>
+                    <p className="text-sm text-muted-foreground mt-2">Create a new game to start playing!</p>
                   </div>
-                  <Button 
-                    onClick={() => handleJoinGame(game.id)}
-                    disabled={isJoining === game.id}
-                  >
-                    {isJoining === game.id ? 'Joining...' : 'Join Game'}
-                  </Button>
+                ) : (
+                  games.filter(game => game.status === 'waiting').map((game) => (
+                    <div 
+                      key={game.id} 
+                      className="flex items-center justify-between p-4 bg-accent/30 rounded-lg hover:bg-accent/50 transition-colors"
+                    >
+                      <div>
+                        <p className="font-medium text-foreground">{game.player1.name}'s Game</p>
+                        <p className="text-sm text-muted-foreground">Bet: {game.betAmount} ChessCoins</p>
+                      </div>
+                      <Button 
+                        onClick={() => handleJoinGame(game.id)}
+                        disabled={isJoining === game.id}
+                        className="bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        {isJoining === game.id ? 'Joining...' : 'Join Game'}
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div>
+          <Card className="bg-card">
+            <CardHeader>
+              <CardTitle className="text-xl font-semibold text-foreground">Create New Game</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="betAmount" className="text-foreground">Bet Amount (ChessCoins)</Label>
+                  <Input
+                    id="betAmount"
+                    type="number"
+                    min="1"
+                    value={betAmount}
+                    onChange={(e) => setBetAmount(e.target.value)}
+                    placeholder="Enter bet amount"
+                    className="bg-input text-foreground placeholder:text-muted-foreground"
+                  />
                 </div>
-              ))}
-              {games.filter(game => game.status === 'waiting').length === 0 && (
-                <p className="text-center text-muted-foreground">No games available to join</p>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                <Button 
+                  onClick={handleCreateGame} 
+                  disabled={isCreating}
+                  className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                >
+                  {isCreating ? 'Creating...' : 'Create Game'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
-  )
+  );
 }

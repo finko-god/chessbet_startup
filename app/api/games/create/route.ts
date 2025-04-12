@@ -65,12 +65,6 @@ export async function POST(request: Request) {
 
       // Create game and deduct ChessCoins in a transaction
       const game = await prisma.$transaction(async (tx) => {
-        // Deduct ChessCoins from user
-        await tx.user.update({
-          where: { id: decoded.id },
-          data: { chessCoin: { decrement: betAmount } }
-        });
-
         // Create the game
         return tx.game.create({
           data: {

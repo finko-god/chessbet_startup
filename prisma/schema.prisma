@@ -18,6 +18,7 @@ model User {
   email     String   @unique
   password  String
   name      String?
+  chessCoin Int      @default(20)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   gamesCreated Game[] @relation("GameCreator")

@@ -97,12 +97,6 @@ export async function POST(
 
       // Update game and deduct ChessCoins in a transaction
       const updatedGame = await prisma.$transaction(async (tx) => {
-        // Deduct ChessCoins from joining player
-        await tx.user.update({
-          where: { id: decoded.id },
-          data: { chessCoin: { decrement: game.betAmount } }
-        });
-
         // Update the game
         return tx.game.update({
           where: {
