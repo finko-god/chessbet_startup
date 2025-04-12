@@ -14,6 +14,8 @@ type ChessBoardProps = {
   initialFen?: string | null
   initialPgn?: string | null
   onGameEnd?: (winner: string | null, reason: string) => void
+  isWhitePlayer?: boolean
+  isGameStarted?: boolean
 }
 
 export default function ChessBoard({
@@ -25,6 +27,8 @@ export default function ChessBoard({
   initialFen,
   initialPgn,
   onGameEnd,
+  isWhitePlayer,
+  isGameStarted,
 }: ChessBoardProps) {
   const [user, setUser] = useState<{ id: string } | null>(null)
   const [game, setGame] = useState<Chess>(new Chess(initialFen || undefined))
@@ -39,6 +43,7 @@ export default function ChessBoard({
   const [moveHistory, setMoveHistory] = useState<string[]>([])
   const [illegalMoveError, setIllegalMoveError] = useState<string | null>(null)
   const [isShaking, setIsShaking] = useState(false)
+  const [firstMoveMade, setFirstMoveMade] = useState(false)
   const router = useRouter()
   const [gameState, setGameState] = useState<any>(null)
   
@@ -65,60 +70,65 @@ export default function ChessBoard({
   
   // Is it this player's turn?
   const isPlayerTurn = useMemo(() => {
-    if (!game || !whitePlayerId || !blackPlayerId) return false
     const currentTurn = game.turn() === 'w'
-    return currentTurn ? isWhite : isBlack
-  }, [game, whitePlayerId, blackPlayerId, isWhite, isBlack])
+    return currentTurn ? isWhitePlayer : !isWhitePlayer
+  }, [game, isWhitePlayer])
   
-  // Update move history when game state changes or PGN changes
+  // Update move history when game state changes
   useEffect(() => {
-    if (game) {
+    if (gameState?.pgn) {
       try {
-        // Extract history directly from the current game object
-        const moves = game.history();
+        const tempGame = new Chess();
+        tempGame.loadPgn(gameState.pgn);
+        const moves = tempGame.history();
         setMoveHistory(moves);
       } catch (error) {
-        console.error('Error extracting move history:', error);
+        console.error('Error loading PGN:', error);
       }
     }
-  }, [game]);
+  }, [gameState?.pgn]);
   
   // Helper to update game state via API
-  const updateGameState = useCallback(async (move: string) => {
+  const updateGameState = useCallback(async (move: string, isFirstMove: boolean = false) => {
     try {
       const response = await fetch(`/api/games/${gameId}/move`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           move,
-          playerId: user?.id,
+          timestamp: Date.now(),
+          isFirstMove,
         }),
-      })
+      });
       
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to update game state')
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update game state');
       }
-
-      const newGameState = await response.json()
-      setGameState(newGameState)
+  
+      const newGameState = await response.json();
+      setGameState(newGameState);
       
       // Create a new game instance with the updated PGN
-      const newChess = new Chess()
+      const newChess = new Chess();
       if (newGameState.pgn) {
-        newChess.loadPgn(newGameState.pgn)
+        newChess.loadPgn(newGameState.pgn);
+        // Update move history from the new PGN
+        const moves = newChess.history();
+        setMoveHistory(moves);
       }
-      setGame(newChess)
-      setCurrentPosition(newGameState.fen)
+      setGame(newChess);
+      setCurrentPosition(newGameState.fen);
     } catch (error) {
-      console.error('Error updating game state:', error)
-      setIllegalMoveError(error instanceof Error ? error.message : 'Invalid move')
-      setIsShaking(true)
-      setTimeout(() => setIsShaking(false), 500)
+      console.error('Error updating game state:', error);
+      setIllegalMoveError(error instanceof Error ? error.message : 'Invalid move');
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
     }
-  }, [gameId, user?.id])
+  }, [gameId]);
 
   const pollGameState = useCallback(async () => {
     if (!user) return
@@ -192,13 +202,11 @@ export default function ChessBoard({
         loadedGame.loadPgn(initialPgn);
         setGame(loadedGame);
         setCurrentPosition(loadedGame.fen());
-        setMoveHistory(loadedGame.history());
         console.log('Loaded game from PGN');
       } else if (initialFen) {
         const loadedGame = new Chess(initialFen);
         setGame(loadedGame);
         setCurrentPosition(loadedGame.fen());
-        setMoveHistory(loadedGame.history());
         console.log('Loaded game from FEN');
       }
     } catch (error) {
@@ -208,8 +216,11 @@ export default function ChessBoard({
   
   // Handle piece moves
   function onDrop(sourceSquare: string, targetSquare: string) {
-    if (isSpectator) return false
-    if ((game.turn() === 'w' && !isWhite) || (game.turn() === 'b' && !isBlack)) return false
+    if (!isGameStarted) return false
+    if (!isPlayerTurn) return false
+
+    // Check if this is white's first move
+    const isFirstMove = !firstMoveMade && game.turn() === 'w'
 
     try {
       const move = game.move({
@@ -220,7 +231,14 @@ export default function ChessBoard({
 
       if (move === null) return false
 
-      updateGameState(move.san)
+      // Update the game state including first move info
+      updateGameState(move.san, isFirstMove)
+      
+      // Mark first move as made if applicable
+      if (isFirstMove) {
+        setFirstMoveMade(true)
+      }
+      
       return true
     } catch (error) {
       return false

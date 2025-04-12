@@ -8,7 +8,7 @@ import { Chess } from 'chess.js'
 const JWT_SECRET = process.env.JWT_SECRET || 'chessbet_supersecret_jwt_key'
 
 export async function POST(
-  request: NextRequest,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
@@ -18,6 +18,7 @@ export async function POST(
       ?.split('=')[1]
     
     if (!token) {
+      console.log('Unauthorized - No token for move')
       return NextResponse.json(
         { error: 'You must be logged in to make a move' },
         { status: 401 }
@@ -29,22 +30,16 @@ export async function POST(
       const decoded = jwt.verify(token, JWT_SECRET) as { id: string }
       
       if (!decoded.id) {
+        console.log('Unauthorized - Invalid token format for move')
         return NextResponse.json(
           { error: 'Invalid authentication' },
           { status: 401 }
         )
       }
-      
-      const userId = decoded.id
-      const { id: gameId } = await params
-      const { move, playerId } = await request.json()
 
-      if (!move || !playerId) {
-        return NextResponse.json(
-          { error: 'Move and playerId are required' },
-          { status: 400 }
-        )
-      }
+      const { move, timestamp, isFirstMove } = await request.json()
+      const { id: gameId } = await params
+      const userId = decoded.id
 
       // Get the current game state
       const game = await prisma.game.findUnique({
@@ -52,53 +47,69 @@ export async function POST(
       })
 
       if (!game) {
-        return NextResponse.json(
-          { error: 'Game not found' },
-          { status: 404 }
-        )
+        return NextResponse.json({ error: 'Game not found' }, { status: 404 })
       }
 
-      // Verify user is part of the game
-      if (game.player1Id !== userId && game.player2Id !== userId) {
+      // Check if the game is still active
+      if (game.status !== 'started') {
+        return NextResponse.json({ error: 'Game is not active' }, { status: 400 })
+      }
+
+      // Verify that the user is a player in the game
+      if (userId !== game.whitePlayerId && userId !== game.blackPlayerId) {
         return NextResponse.json(
-          { error: 'You are not a participant in this game' },
+          { error: 'You are not a player in this game' },
           { status: 403 }
         )
       }
 
-      // Verify game is in progress
-      if (game.status !== 'started') {
-        return NextResponse.json(
-          { error: 'Cannot make moves in a game that is not in progress' },
-          { status: 400 }
-        )
-      }
-
-      // Create a new chess game instance with the current PGN
+      // Check if it's the player's turn
       const chess = new Chess()
       if (game.pgn) {
         chess.loadPgn(game.pgn)
       } else if (game.fen) {
         chess.load(game.fen)
       }
+      const isWhiteTurn = chess.turn() === 'w'
+      if (
+        (isWhiteTurn && userId !== game.whitePlayerId) ||
+        (!isWhiteTurn && userId !== game.blackPlayerId)
+      ) {
+        return NextResponse.json({ error: 'Not your turn' }, { status: 400 })
+      }
 
-      // Make the move
+      // Calculate time elapsed since last move, but only if not the first move
+      // For first move, we don't deduct time
+      let whiteTime = game.player1TimeLeft || 300000
+      let blackTime = game.player2TimeLeft || 300000
+
+      if (!isFirstMove) {
+        const timeElapsed = timestamp - (game.lastMoveAt?.getTime() || Date.now())
+        
+        // Update player times based on whose turn it was
+        if (isWhiteTurn) {
+          whiteTime = Math.max(0, whiteTime - timeElapsed)
+        } else {
+          blackTime = Math.max(0, blackTime - timeElapsed)
+        }
+      }
+
+      // Check if the move is valid and update the game state
       try {
         chess.move(move)
       } catch (error) {
-        return NextResponse.json(
-          { error: 'Invalid move' },
-          { status: 400 }
-        )
+        return NextResponse.json({ error: 'Invalid move' }, { status: 400 })
       }
 
-      // Update the game state
+      // Update the game with new state and times
       const updatedGame = await prisma.game.update({
         where: { id: gameId },
         data: {
           fen: chess.fen(),
           pgn: chess.pgn(),
-          lastMoveAt: new Date(),
+          player1TimeLeft: whiteTime,
+          player2TimeLeft: blackTime,
+          lastMoveAt: new Date(timestamp),
         },
       })
 
@@ -111,10 +122,10 @@ export async function POST(
       )
     }
   } catch (error) {
-    console.error('Error making move:', error)
+    console.error('Error processing move:', error)
     return NextResponse.json(
-      { error: 'Failed to make move' },
+      { error: 'Failed to process move' },
       { status: 500 }
     )
   }
-} 
+}

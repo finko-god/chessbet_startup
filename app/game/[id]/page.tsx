@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import ChessBoard from '@/app/components/ChessBoard'
+import ChessClock from '@/app/components/ChessClock'
 import { use } from 'react'
+
 
 interface User {
   id: string
@@ -30,6 +32,9 @@ interface Game {
   winner: string | null
   whitePlayerId: string | null
   blackPlayerId: string | null
+  player1TimeLeft: number | null
+  player2TimeLeft: number | null
+  lastMoveAt: string | null
 }
 
 export default function GamePage({ params }: { params: Promise<{ id: string }> }) {
@@ -197,6 +202,31 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     }
   }
 
+  const handleTimeEnd = async (gameId: string, winner: 'white' | 'black') => {
+    const winnerId = winner === 'white' ? game?.whitePlayerId : game?.blackPlayerId
+    if (winnerId) {
+      setGameResult({ winner: winnerId, reason: 'time' })
+      try {
+        await fetch(`/api/games/${gameId}/result`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            result: 'time',
+            winnerId: winnerId,
+          }),
+        })
+        
+        // Refresh game state to reflect the game is over
+        await fetchGame()
+      } catch (error) {
+        console.error('Error recording game result:', error)
+      }
+    }
+  }
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4">
@@ -284,67 +314,63 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <div className="container mx-auto p-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Game #{game.id.slice(0, 8)}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div>
-              <h3 className="font-semibold">Players</h3>
-              <p>Player 1 (White): {game.player1.name}</p>
-              <p>Player 2 (Black): {game.player2?.name || 'Waiting for opponent...'}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Bet Amount</h3>
-              <p>${game.betAmount}</p>
-            </div>
-            <div>
-              <h3 className="font-semibold">Status</h3>
-              <p className={game.status === 'started' ? "text-green-600 font-medium" : ""}>
-                {game.status === 'waiting' ? 'Waiting for opponent' : 
-                 game.status === 'started' ? 'Game in progress' : 
-                 'Game finished'}
-              </p>
-            </div>
-
-            {canJoin && (
-              <Button
-                onClick={handleJoinGame}
-                className="w-full"
-              >
-                Join Game
-              </Button>
-            )}
-
-            {game.status === 'started' && (
-              <Button
-                onClick={handleFinishGame}
-                disabled={isFinishing}
-                variant="outline"
-                className="w-full"
-              >
-                {isFinishing ? 'Finishing game...' : 'Finish Game (Draw)'}
-              </Button>
-            )}
-
-            {showChessBoard && (
-              <div className="mt-6">
-                <ChessBoard
-                  gameId={game.id}
-                  player1Id={game.player1.id}
-                  player2Id={game.player2?.id}
-                  whitePlayerId={game.whitePlayerId}
-                  blackPlayerId={game.blackPlayerId}
-                  initialFen={game.fen || undefined}
-                  initialPgn={game.pgn || undefined}
-                  onGameEnd={handleGameEnd}
-                />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="md:col-span-2">
+          <ChessBoard
+            gameId={gameId}
+            player1Id={game.player1.id}
+            player2Id={game.player2?.id}
+            whitePlayerId={game.whitePlayerId}
+            blackPlayerId={game.blackPlayerId}
+            initialFen={game.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
+            initialPgn={game.pgn}
+            onGameEnd={handleGameEnd}
+            isWhitePlayer={user?.id === game.whitePlayerId}
+            isGameStarted={game.status === 'started'}
+          />
+        </div>
+        <div className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Game Info</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                <p>Player 1: {game.player1.name}</p>
+                <p>Player 2: {game.player2?.name || 'Waiting...'}</p>
+                <p>Bet Amount: ${game.betAmount}</p>
+                <p>Status: {game.status}</p>
               </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+          
+          <ChessClock
+            gameId={gameId}
+            isWhitePlayer={user?.id === game.whitePlayerId}
+            whiteTime={game.player1TimeLeft || 300000}
+            blackTime={game.player2TimeLeft || 300000}
+            isWhiteTurn={!game.fen || game.fen.split(' ')[1] === 'w'}
+            isGameStarted={game.status === 'started'}
+            onTimeEndAction={handleTimeEnd}
+          />
+
+          {game.status === 'waiting' && !game.player2 && (
+            <Button onClick={handleJoinGame} className="w-full">
+              Join Game
+            </Button>
+          )}
+
+          {game.status === 'started' && (
+            <Button 
+              onClick={handleFinishGame} 
+              className="w-full"
+              disabled={isFinishing}
+            >
+              {isFinishing ? 'Finishing...' : 'Finish Game'}
+            </Button>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
