@@ -198,7 +198,12 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   }
 
   if (isLoading) {
-    return <div>Loading game...</div>
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary border-t-transparent"></div>
+        <h2 className="text-xl font-semibold text-muted-foreground">Loading Game...</h2>
+      </div>
+    );
   }
 
   if (error) {

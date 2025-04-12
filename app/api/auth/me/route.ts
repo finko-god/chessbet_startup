@@ -17,10 +17,24 @@ export async function GET(request: Request) {
     }
 
     // Verify and decode the token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string };
+    const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
 
-    // Return user info
-    return NextResponse.json({ id: decoded.id });
+    // Get user data from database
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    // Return complete user info
+    return NextResponse.json(user);
   } catch (error) {
     console.error('Error in /api/auth/me:', error);
     return NextResponse.json({ error: 'Invalid token' }, { status: 401 });

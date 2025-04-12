@@ -74,8 +74,13 @@ export async function POST(
         )
       }
 
-      // Create a new chess game instance with the current FEN
-      const chess = new Chess(game.fen || undefined)
+      // Create a new chess game instance with the current PGN
+      const chess = new Chess()
+      if (game.pgn) {
+        chess.loadPgn(game.pgn)
+      } else if (game.fen) {
+        chess.load(game.fen)
+      }
 
       // Make the move
       try {
