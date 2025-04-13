@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import ChessBoard from '@/app/components/ChessBoard'
-import ChessClock from '@/app/components/ChessClock'
+import ChessBoard from '@/components/ChessBoard'
+import ChessClock from '@/components/ChessClock'
 import { use } from 'react'
 import { X } from 'lucide-react'
-import { Alert, AlertDescription } from '@/app/components/ui/alert'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface User {
   id: string
@@ -39,11 +39,9 @@ interface Game {
 }
 
 export default function GamePage({ params }: { params: Promise<{ id: string }> }) {
-  // Use React.use() to unwrap the params Promise
   const { id: gameId } = use(params)
   const router = useRouter()
   
-  // All state hooks grouped together
   const [game, setGame] = useState<Game | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -58,10 +56,7 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include',
-        })
-        
+        const response = await fetch('/api/auth/me', { credentials: 'include' })
         if (response.ok) {
           const userData = await response.json()
           setUser(userData)
@@ -73,11 +68,9 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         router.push('/signin')
       }
     }
-
     checkAuth()
   }, [router])
 
-  // Check URL params for redirect status
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search)
     if (urlParams.get('joined') === 'true') {
@@ -86,11 +79,9 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     }
   }, [gameId])
 
-  // Fetch game data and set up polling
   useEffect(() => {
     if (gameId) {
       fetchGame()
-      
       if (!redirectedFromJoin) {
         const interval = setInterval(fetchGame, 2000)
         return () => clearInterval(interval)
@@ -98,7 +89,6 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
     }
   }, [gameId, redirectedFromJoin])
 
-  // Debug logging
   useEffect(() => {
     if (game && user) {
       console.log('Game page debug:', {
@@ -115,23 +105,13 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
 
   const fetchGame = async () => {
     try {
-      const response = await fetch(`/api/games/${gameId}`, {
-        credentials: 'include',
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch game')
-      }
-
+      const response = await fetch(`/api/games/${gameId}`, { credentials: 'include' })
+      if (!response.ok) throw new Error('Failed to fetch game')
       const data = await response.json()
       setGame(data)
-
-      // If game is finished, show message and redirect to lobby after a delay
       if (data.status === 'finished') {
         setFinishMessage('Game has ended. Redirecting to lobby...')
-        setTimeout(() => {
-          router.push('/')
-        }, 3000)
+        setTimeout(() => router.push('/'), 3000)
       }
     } catch (error) {
       console.error('Error fetching game:', error)
@@ -142,40 +122,37 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   }
 
   const handleJoinGame = async () => {
-    setJoiningGame(true);
-    setError(null);
-    
+    setJoiningGame(true)
+    setError(null)
     try {
       const response = await fetch(`/api/games/${gameId}/join`, {
         method: 'POST',
         credentials: 'include',
-      });
-  
-      let responseData;
+      })
+      let responseData
       try {
-        responseData = await response.json();
+        responseData = await response.json()
       } catch (parseError) {
-        console.error('Error parsing response:', parseError);
-        setError('Failed to join game: invalid response from server');
-        setJoiningGame(false);
-        return;
+        console.error('Error parsing response:', parseError)
+        setError('Failed to join game: invalid response from server')
+        setJoiningGame(false)
+        return
       }
   
       if (response.ok) {
-        // Add a flag to URL to remember we just joined
-        window.location.href = `/game/${gameId}?joined=true`;
+        window.location.href = `/game/${gameId}?joined=true`
       } else {
         if (responseData.error && responseData.error.includes('Insufficient ChessCoins')) {
-          setError('You don\'t have enough ChessCoins to join this game. Please check your balance in your account page.');
+          setError('You don\'t have enough ChessCoins to join this game. Please check your balance in your account page.')
         } else {
-          setError(responseData.error || 'Failed to join game');
+          setError(responseData.error || 'Failed to join game')
         }
       }
     } catch (error) {
-      console.error('Error joining game:', error);
-      setError('Failed to join game: network or server error');
+      console.error('Error joining game:', error)
+      setError('Failed to join game: network or server error')
     } finally {
-      setJoiningGame(false);
+      setJoiningGame(false)
     }
   }
 
@@ -186,13 +163,9 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         method: 'POST',
         credentials: 'include',
       })
-
       if (response.ok) {
         setFinishMessage('Game finished! Both players will be redirected to the lobby...')
-        // Redirect to landing page after a short delay
-        setTimeout(() => {
-          router.push('/')
-        }, 2500)
+        setTimeout(() => router.push('/'), 2500)
       } else {
         const errorData = await response.json()
         setError(errorData.error || 'Failed to finish game')
@@ -207,17 +180,11 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
 
   const handleGameEnd = async (winner: string | null, reason: string) => {
     setGameResult({ winner, reason })
-    
     try {
       await fetch(`/api/games/${gameId}/result`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          result: reason,
-          winnerId: winner,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ result: reason, winnerId: winner }),
       })
     } catch (error) {
       console.error('Error recording game result:', error)
@@ -231,17 +198,10 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
       try {
         await fetch(`/api/games/${gameId}/result`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            result: 'time',
-            winnerId: winnerId,
-          }),
+          body: JSON.stringify({ result: 'time', winnerId: winnerId }),
         })
-        
-        // Refresh game state to reflect the game is over
         await fetchGame()
       } catch (error) {
         console.error('Error recording game result:', error)
@@ -262,7 +222,7 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
           <div className="h-24 bg-accent/20 rounded mt-4"></div>
         </div>
       </div>
-    );
+    )
   }
 
   if (error) {
@@ -287,10 +247,7 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         <Card className="bg-card">
           <CardContent className="p-6">
             <p className="text-foreground">Game not found</p>
-            <Button 
-              onClick={() => router.push('/')} 
-              className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
+            <Button onClick={() => router.push('/')} className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90">
               Return to Lobby
             </Button>
           </CardContent>
@@ -315,24 +272,23 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   }
 
   if (gameResult) {
-    const winnerName = gameResult.winner === game.player1.id 
-      ? game.player1.name 
-      : (game.player2 && gameResult.winner === game.player2.id ? game.player2.name : 'Draw');
-    
+    const winnerName =
+      gameResult.winner === game.player1.id
+        ? game.player1.name
+        : game.player2 && gameResult.winner === game.player2.id
+        ? game.player2.name
+        : 'Draw'
     return (
       <div className="container mx-auto p-4">
         <Card className="bg-card">
           <CardContent className="p-6 text-center">
             <h2 className="text-xl font-bold mb-4 text-foreground">Game Over</h2>
             <p className="text-lg text-foreground">
-              {gameResult.winner 
-                ? `${winnerName} won by ${gameResult.reason}` 
+              {gameResult.winner
+                ? `${winnerName} won by ${gameResult.reason}`
                 : `Game ended in a ${gameResult.reason}`}
             </p>
-            <Button 
-              onClick={() => router.push('/')} 
-              className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
+            <Button onClick={() => router.push('/')} className="mt-6 bg-primary text-primary-foreground hover:bg-primary/90">
               Return to Lobby
             </Button>
           </CardContent>
@@ -343,9 +299,8 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
 
   return (
     <div className="container mx-auto p-4">
-      {/* Desktop Layout - Game Info on top, chessboard on left, turn indicator + clock + history on right */}
+      {/* Desktop Layout */}
       <div className="hidden lg:block">
-        {/* Game Info Panel at top */}
         <Card className="mb-6 bg-card">
           <CardContent className="p-4">
             <div className="grid grid-cols-4 gap-4">
@@ -372,32 +327,24 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             </div>
           </CardContent>
         </Card>
-
-        {/* Main Content Area - split into two columns */}
         <div className="grid grid-cols-3 gap-6">
-          {/* Chessboard Column */}
           <div className="col-span-2">
-            <div className="bg-card rounded-lg p-4 flex justify-center">
-              <div className="w-full max-w-lg">
-                <ChessBoard
-                  gameId={gameId}
-                  player1Id={game.player1.id}
-                  player2Id={game.player2?.id}
-                  whitePlayerId={game.whitePlayerId}
-                  blackPlayerId={game.blackPlayerId}
-                  initialFen={game.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
-                  initialPgn={game.pgn}
-                  onGameEnd={handleGameEnd}
-                  isWhitePlayer={user?.id === game.whitePlayerId}
-                  isGameStarted={game.status === 'started'}
-                />
-              </div>
+            <div className="bg-card rounded-lg p-4 h-[calc(100vh-200px)] min-h-[600px]">
+              <ChessBoard
+                gameId={gameId}
+                player1Id={game.player1.id}
+                player2Id={game.player2?.id}
+                whitePlayerId={game.whitePlayerId}
+                blackPlayerId={game.blackPlayerId}
+                initialFen={game.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
+                initialPgn={game.pgn}
+                onGameEnd={handleGameEnd}
+                isWhitePlayer={user?.id === game.whitePlayerId}
+                isGameStarted={game.status === 'started'}
+              />
             </div>
           </div>
-
-          {/* Right Panel with Turn Indicator, Clock and Move History */}
           <div className="col-span-1 space-y-4">
-            {/* Turn Indicator */}
             <Card className="bg-card">
               <CardContent className="p-4">
                 <div className="text-center">
@@ -405,15 +352,13 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                     {!game.fen || game.fen.split(' ')[1] === 'w' ? 'White to move' : 'Black to move'}
                   </p>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {user?.id === ((!game.fen || game.fen.split(' ')[1] === 'w') ? game.whitePlayerId : game.blackPlayerId) 
-                      ? 'Your turn' 
+                    {user?.id === ((!game.fen || game.fen.split(' ')[1] === 'w') ? game.whitePlayerId : game.blackPlayerId)
+                      ? 'Your turn'
                       : 'Opponent\'s turn'}
                   </p>
                 </div>
               </CardContent>
             </Card>
-
-            {/* Chess Clock */}
             <ChessClock
               gameId={gameId}
               isWhitePlayer={user?.id === game.whitePlayerId}
@@ -423,8 +368,6 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
               isGameStarted={game.status === 'started'}
               onTimeEndAction={handleTimeEnd}
             />
-
-            {/* Move History */}
             <Card className="bg-card">
               <CardHeader className="p-4 pb-0">
                 <CardTitle className="text-lg">Move History</CardTitle>
@@ -433,7 +376,8 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                 <div className="h-64 overflow-y-auto pr-2 move-history">
                   {game.pgn ? (
                     <div className="space-y-1">
-                      {game.pgn.split('\n')
+                      {game.pgn
+                        .split('\n')
                         .filter(line => !line.startsWith('[') && line.trim() !== '')
                         .join(' ')
                         .split(/\d+\./)
@@ -453,21 +397,18 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                 </div>
               </CardContent>
             </Card>
-
-            {/* Action Buttons */}
             {game.status === 'waiting' && !game.player2 && (
-              <Button 
-                onClick={handleJoinGame} 
+              <Button
+                onClick={handleJoinGame}
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={joiningGame}
               >
                 {joiningGame ? 'Joining...' : 'Join Game'}
               </Button>
             )}
-
             {game.status === 'started' && (
-              <Button 
-                onClick={handleFinishGame} 
+              <Button
+                onClick={handleFinishGame}
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={isFinishing}
               >
@@ -478,9 +419,8 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         </div>
       </div>
 
-      {/* Mobile Layout - Stacked vertically */}
+      {/* Mobile Layout */}
       <div className="lg:hidden space-y-4">
-        {/* Compact Game Info */}
         <Card className="bg-card">
           <CardContent className="p-3">
             <div className="grid grid-cols-2 gap-2 text-sm">
@@ -507,21 +447,17 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             </div>
           </CardContent>
         </Card>
-
-        {/* Turn Indicator */}
         <div className="bg-card rounded-lg p-3 text-center">
           <p className="font-medium">
             {!game.fen || game.fen.split(' ')[1] === 'w' ? 'White to move' : 'Black to move'}
           </p>
           <p className="text-sm text-muted-foreground">
-            {user?.id === ((!game.fen || game.fen.split(' ')[1] === 'w') ? game.whitePlayerId : game.blackPlayerId) 
-              ? 'Your turn' 
+            {user?.id === ((!game.fen || game.fen.split(' ')[1] === 'w') ? game.whitePlayerId : game.blackPlayerId)
+              ? 'Your turn'
               : 'Opponent\'s turn'}
           </p>
         </div>
-
-        {/* Chessboard */}
-        <div className="bg-card rounded-lg p-3">
+        <div className="bg-card rounded-lg p-3 h-[calc(100vh-400px)] min-h-[300px]">
           <ChessBoard
             gameId={gameId}
             player1Id={game.player1.id}
@@ -535,8 +471,6 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             isGameStarted={game.status === 'started'}
           />
         </div>
-
-        {/* Chess Clock */}
         <ChessClock
           gameId={gameId}
           isWhitePlayer={user?.id === game.whitePlayerId}
@@ -546,8 +480,6 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
           isGameStarted={game.status === 'started'}
           onTimeEndAction={handleTimeEnd}
         />
-
-        {/* Move History */}
         <Card className="bg-card">
           <CardHeader className="p-3 pb-0">
             <CardTitle className="text-base">Move History</CardTitle>
@@ -556,7 +488,8 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             <div className="h-40 overflow-y-auto pr-1 move-history">
               {game.pgn ? (
                 <div className="space-y-1">
-                  {game.pgn.split('\n')
+                  {game.pgn
+                    .split('\n')
                     .filter(line => !line.startsWith('[') && line.trim() !== '')
                     .join(' ')
                     .split(/\d+\./)
@@ -576,21 +509,18 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             </div>
           </CardContent>
         </Card>
-
-        {/* Action Buttons */}
         {game.status === 'waiting' && !game.player2 && (
-          <Button 
-            onClick={handleJoinGame} 
+          <Button
+            onClick={handleJoinGame}
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
             disabled={joiningGame}
           >
             {joiningGame ? 'Joining...' : 'Join Game'}
           </Button>
         )}
-
         {game.status === 'started' && (
-          <Button 
-            onClick={handleFinishGame} 
+          <Button
+            onClick={handleFinishGame}
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
             disabled={isFinishing}
           >

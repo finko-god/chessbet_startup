@@ -140,29 +140,29 @@ export default function ChessClock({
   };
 
   return (
-    <div className="flex flex-col items-center space-y-4">
+    <div className="chess-clock-container">
       <div
-        className={`p-4 rounded-lg w-full transition-colors ${
-          isWhiteTurn && isClockRunning ? 'bg-green-100 border border-green-400' : 'bg-gray-100'
+        className={`chess-clock ${
+          isWhiteTurn && isClockRunning ? 'active' : ''
         }`}
       >
-        <div className="text-sm font-semibold">White</div>
-        <div className={`text-2xl font-mono ${whiteTimeLeft < 30000 ? 'text-red-600' : ''}`}>
+        <div className="player-name">White</div>
+        <div className={`time ${whiteTimeLeft < 30000 ? 'text-red-600' : ''}`}>
           {formatTime(whiteTimeLeft)}
         </div>
         {isFirstMove && isWhiteTurn && (
-          <div className="text-xs text-gray-500 mt-1">
-            Time starts after first move
+          <div className="text-[10px] text-gray-500">
+            First move
           </div>
         )}
       </div>
       <div
-        className={`p-4 rounded-lg w-full transition-colors ${
-          !isWhiteTurn && isClockRunning ? 'bg-green-100 border border-green-400' : 'bg-gray-100'
+        className={`chess-clock ${
+          !isWhiteTurn && isClockRunning ? 'active' : ''
         }`}
       >
-        <div className="text-sm font-semibold">Black</div>
-        <div className={`text-2xl font-mono ${blackTimeLeft < 30000 ? 'text-red-600' : ''}`}>
+        <div className="player-name">Black </div>
+        <div className={`time ${blackTimeLeft < 30000 ? 'text-red-600' : ''}`}>
           {formatTime(blackTimeLeft)}
         </div>
       </div>

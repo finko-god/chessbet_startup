@@ -8,7 +8,9 @@ export default function ChessCoinBalance() {
   useEffect(() => {
     const fetchBalance = async () => {
       try {
-        const response = await fetch('/api/user/balance')
+        const response = await fetch('/api/user/balance', {
+          credentials: 'include'
+        })
         if (!response.ok) {
           throw new Error('Failed to fetch balance')
         }
@@ -28,8 +30,8 @@ export default function ChessCoinBalance() {
   }
 
   return (
-    <div className="flex items-center space-x-2">
-      <span className="font-bold">ChessCoins:</span>
+    <div className="flex  items-center space-x-2">
+      <span className="font-bold "></span>
       <span className="text-lg">
         {balance !== null ? balance : 'Loading...'}
       </span>

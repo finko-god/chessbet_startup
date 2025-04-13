@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import ChessCoinBalance from '@/app/components/ChessCoinBalance';
+import ChessCoinBalance from '@/components/ChessCoinBalance';
 import { useState, useEffect } from 'react';
 
 export default function Header() {
