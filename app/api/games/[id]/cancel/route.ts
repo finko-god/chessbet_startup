@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'chessbet_supersecret_jwt_key';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get token from cookie
@@ -36,12 +36,12 @@ export async function POST(
         );
       }
 
-      const gameId = params.id;
+      const { id } = await params;
 
       // Find the game
       const game = await prisma.game.findUnique({
         where: {
-          id: gameId,
+          id,
         },
         include: {
           player1: true,
@@ -75,7 +75,7 @@ export async function POST(
       // Update the game status to finished
       const updatedGame = await prisma.game.update({
         where: {
-          id: gameId,
+          id,
         },
         data: {
           status: 'finished',

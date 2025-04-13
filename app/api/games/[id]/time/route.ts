@@ -10,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'chessbet_supersecret_jwt_key';
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get token from cookie
@@ -37,49 +37,40 @@ export async function PUT(
           { status: 401 }
         );
       }
-      
-      const userId = decoded.id;
-      const gameId = params.id;
-      const { whiteTime, blackTime } = await request.json();
 
-      // Get the current game state
+      const { id } = await params;
+      const { player1TimeLeft, player2TimeLeft } = await request.json();
+
+      // Get the game
       const game = await prisma.game.findUnique({
-        where: { id: gameId },
+        where: { id },
       });
 
       if (!game) {
-        return NextResponse.json({ error: 'Game not found' }, { status: 404 });
-      }
-
-      // Verify that the user is a player in the game
-      if (userId !== game.whitePlayerId && userId !== game.blackPlayerId) {
         return NextResponse.json(
-          { error: 'You are not a player in this game' },
-          { status: 403 }
+          { error: 'Game not found' },
+          { status: 404 }
         );
       }
 
-      // Only update if the game is active
-      if (game.status !== 'started') {
+      // Verify user is a participant
+      if (game.player1Id !== decoded.id && game.player2Id !== decoded.id) {
         return NextResponse.json(
-          { error: 'Game is not active' },
-          { status: 400 }
+          { error: 'You are not a participant in this game' },
+          { status: 403 }
         );
       }
 
       // Update the game with new times
       const updatedGame = await prisma.game.update({
-        where: { id: gameId },
+        where: { id },
         data: {
-          player1TimeLeft: whiteTime,
-          player2TimeLeft: blackTime,
+          player1TimeLeft,
+          player2TimeLeft,
         },
       });
 
-      return NextResponse.json({
-        whiteTime: updatedGame.player1TimeLeft,
-        blackTime: updatedGame.player2TimeLeft,
-      });
+      return NextResponse.json(updatedGame);
     } catch (jwtError) {
       console.error('Token verification error:', jwtError);
       return NextResponse.json(
@@ -88,9 +79,9 @@ export async function PUT(
       );
     }
   } catch (error) {
-    console.error('Error updating time:', error);
+    console.error('Error updating game time:', error);
     return NextResponse.json(
-      { error: 'Failed to update time' },
+      { error: 'Failed to update game time' },
       { status: 500 }
     );
   }

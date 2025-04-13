@@ -16,7 +16,7 @@ interface GameUpdateData {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get token from cookie
@@ -44,12 +44,11 @@ export async function GET(
         );
       }
       
-      const userId = decoded.id;
-      const gameId = params.id;
+      const { id } = await params;
 
       // Get the game
       const game = await prisma.game.findUnique({
-        where: { id: gameId },
+        where: { id },
         include: {
           player1: {
             select: {
@@ -74,7 +73,7 @@ export async function GET(
       }
 
       // Verify user is part of the game
-      if (game.player1Id !== userId && game.player2Id !== userId) {
+      if (game.player1Id !== decoded.id && game.player2Id !== decoded.id) {
         return NextResponse.json(
           { error: 'You are not a participant in this game' },
           { status: 403 }
@@ -100,7 +99,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get token from cookie
@@ -128,13 +127,12 @@ export async function PUT(
         );
       }
       
-      const userId = decoded.id;
-      const gameId = params.id;
+      const { id } = await params;
       const { fen, pgn, status, timeLeft } = await request.json();
 
       // Get the current game state
       const game = await prisma.game.findUnique({
-        where: { id: gameId },
+        where: { id },
       });
 
       if (!game) {
@@ -145,7 +143,7 @@ export async function PUT(
       }
 
       // Verify user is part of the game
-      if (game.player1Id !== userId && game.player2Id !== userId) {
+      if (game.player1Id !== decoded.id && game.player2Id !== decoded.id) {
         return NextResponse.json(
           { error: 'You are not a participant in this game' },
           { status: 403 }
@@ -168,17 +166,17 @@ export async function PUT(
 
       // Handle time updates
       if (timeLeft && typeof timeLeft === 'object') {
-        if (userId === game.player1Id && timeLeft.player1 !== undefined) {
+        if (decoded.id === game.player1Id && timeLeft.player1 !== undefined) {
           updateData.player1TimeLeft = timeLeft.player1;
         }
-        if (userId === game.player2Id && timeLeft.player2 !== undefined) {
+        if (decoded.id === game.player2Id && timeLeft.player2 !== undefined) {
           updateData.player2TimeLeft = timeLeft.player2;
         }
       }
 
       // Update the game
       const updatedGame = await prisma.game.update({
-        where: { id: gameId },
+        where: { id },
         data: updateData,
       });
 

@@ -8,7 +8,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'chessbet_supersecret_jwt_key';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Get token from cookie
@@ -17,44 +17,35 @@ export async function POST(
       ?.split('=')[1];
     
     if (!token) {
-      console.log('Unauthorized - No token for game finish');
+      console.log('Unauthorized - No token');
       return NextResponse.json(
         { error: 'You must be logged in to finish a game' },
         { status: 401 }
       );
     }
-
+    
     try {
       // Verify the token
       const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
       
       if (!decoded.id) {
-        console.log('Unauthorized - Invalid token format for game finish');
+        console.log('Unauthorized - Invalid token');
         return NextResponse.json(
           { error: 'Invalid authentication' },
           { status: 401 }
         );
       }
-      
-      const userId = decoded.id;
-      const gameId = params.id;
 
-      // Get the game and make sure it exists
+      const { id } = await params;
+
+      // Find the game
       const game = await prisma.game.findUnique({
-        where: { id: gameId },
+        where: {
+          id,
+        },
         include: {
-          player1: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          player2: {
-            select: {
-              id: true, 
-              name: true,
-            },
-          },
+          player1: true,
+          player2: true,
         },
       });
 
@@ -65,27 +56,34 @@ export async function POST(
         );
       }
 
-      // User must be a participant in the game
-      if (game.player1Id !== userId && game.player2Id !== userId) {
+      // Only players can finish the game
+      if (game.player1Id !== decoded.id && game.player2Id !== decoded.id) {
         return NextResponse.json(
-          { error: 'You are not a participant in this game' },
+          { error: 'Only players can finish the game' },
           { status: 403 }
         );
       }
 
-      // Game must be in progress
+      // Only started games can be finished
       if (game.status !== 'started') {
         return NextResponse.json(
-          { error: 'Game must be in progress to be finished' },
+          { error: 'Only started games can be finished' },
           { status: 400 }
         );
       }
 
-      // Now mutually agreed finish can proceed
+      // Update the game status to finished
       const updatedGame = await prisma.game.update({
-        where: { id: gameId },
+        where: {
+          id,
+        },
         data: {
           status: 'finished',
+          winner: decoded.id,
+        },
+        include: {
+          player1: true,
+          player2: true,
         },
       });
 
