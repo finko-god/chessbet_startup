@@ -26,11 +26,19 @@ export default function ChessClock({
   const [isClockRunning, setIsClockRunning] = useState(false);
   const lastUpdateTimeRef = useRef<number>(Date.now());
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const prevWhiteTimeRef = useRef(whiteTime);
+  const prevBlackTimeRef = useRef(blackTime);
   
   // Sync local clock with server times when props change
   useEffect(() => {
-    setWhiteTimeLeft(whiteTime);
-    setBlackTimeLeft(blackTime);
+    if (prevWhiteTimeRef.current !== whiteTime) {
+      setWhiteTimeLeft(whiteTime);
+      prevWhiteTimeRef.current = whiteTime;
+    }
+    if (prevBlackTimeRef.current !== blackTime) {
+      setBlackTimeLeft(blackTime);
+      prevBlackTimeRef.current = blackTime;
+    }
   }, [whiteTime, blackTime]);
 
   // Start clock when game begins or turn changes

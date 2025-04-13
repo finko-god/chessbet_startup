@@ -66,11 +66,12 @@ export default function ChessBoard({
   const [kingSquare, setKingSquare] = useState<string | null>(null)
   const [boardWidth, setBoardWidth] = useState(400)
   const [showInvalidMove, setShowInvalidMove] = useState(false)
-  const [invalidMoveMessage, setInvalidMoveMessage] = useState<string | null>(null)
+  const [, setInvalidMoveMessage] = useState<string | null>(null)
   const [invalidMoveSquare, setInvalidMoveSquare] = useState<string | null>(null)
   const router = useRouter()
   const [gameState, setGameState] = useState<GameState | null>(null)
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Fetch current user on mount
   useEffect(() => {
@@ -245,29 +246,37 @@ export default function ChessBoard({
   function onDrop(sourceSquare: string, targetSquare: string) {
     if (!isGameStarted) return false
     if (!isPlayerTurn) return false
-  
+
     const isFirstMove = !firstMoveMade && game.turn() === 'w'
     try {
-      const move = game.move({
+      // Create a copy of the game to apply the move optimistically
+      const gameCopy = new Chess(game.fen())
+      const move = gameCopy.move({
         from: sourceSquare,
         to: targetSquare,
         promotion: 'q',
       })
+      
       if (move) {
-        updateGameState(move.san, isFirstMove)
-        if (isFirstMove) setFirstMoveMade(true)
-        setOptionSquares({})
+        // Update local state immediately
+        setGame(gameCopy)
+        setCurrentPosition(gameCopy.fen())
         setLastMove({
           from: sourceSquare,
           to: targetSquare
         })
+        
+        // Then send to server
+        updateGameState(move.san, isFirstMove)
+        if (isFirstMove) setFirstMoveMade(true)
+        setOptionSquares({})
         return true
       }
     } catch (error) {
       console.error('Error on drop:', error)
       setInvalidMoveSquare(sourceSquare)
-      setShowInvalidMove(true)
-      setInvalidMoveMessage('Invalid move!')
+
+      setShowInvalidMove(true);
       setTimeout(() => {
         setShowInvalidMove(false)
         setInvalidMoveMessage(null)
@@ -277,32 +286,40 @@ export default function ChessBoard({
     }
     return false
   }
-  
+
   // Handle square clicks for piece moves
   function onSquareClick(square: Square) {
     if (!isGameStarted || !isPlayerTurn) return
     if (selectedPiece) {
       try {
-        const move = game.move({
+        // Create a copy of the game to apply the move optimistically
+        const gameCopy = new Chess(game.fen())
+        const move = gameCopy.move({
           from: selectedPiece,
           to: square,
           promotion: 'q',
         })
+        
         if (move) {
-          updateGameState(move.san, !firstMoveMade && game.turn() === 'w')
-          setSelectedPiece(null)
-          setOptionSquares({})
+          // Update local state immediately
+          setGame(gameCopy)
+          setCurrentPosition(gameCopy.fen())
           setLastMove({
             from: selectedPiece,
             to: square
           })
+          
+          // Then send to server
+          updateGameState(move.san, !firstMoveMade && gameCopy.turn() === 'w')
+          setSelectedPiece(null)
+          setOptionSquares({})
           return
         }
       } catch (error) {
         console.error('Error on square click:', error)
         setInvalidMoveSquare(selectedPiece)
         setShowInvalidMove(true)
-        setInvalidMoveMessage('Invalid move!')
+
         setTimeout(() => {
           setShowInvalidMove(false)
           setInvalidMoveMessage(null)
@@ -336,7 +353,7 @@ export default function ChessBoard({
       showPossibleMoves(square)
     }
   }
-  
+
   // Show possible moves for a piece
   function showPossibleMoves(square: Square) {
     const moves = game.moves({ square, verbose: true })
@@ -356,7 +373,7 @@ export default function ChessBoard({
       setOptionSquares(newSquares)
     }
   }
-  
+
   // Highlight possible targets on drag start
   function onPieceDragBegin(piece: string, sourceSquare: string) {
     if (!isPlayerTurn) return
@@ -377,29 +394,39 @@ export default function ChessBoard({
       setOptionSquares(newSquares)
     }
   }
-  
+
   function onPieceDragEnd() {
     setOptionSquares({})
   }
-  
-  // Update board width based on container size
+
+  // Update board size based on viewport and container
   useEffect(() => {
     const updateBoardWidth = () => {
-      const container = document.querySelector('.chess-board-container')
-      if (container) {
-        const containerWidth = container.clientWidth
+      if (!containerRef.current) return
+      
+      const isMobile = window.innerWidth < 768
+      
+      if (isMobile) {
+        // For mobile, use almost the full viewport width
+        const viewportWidth = window.innerWidth
+        const viewportHeight = window.innerHeight
+        
+        // Set the board size to fill maximum available space while maintaining aspect ratio
+        setBoardWidth(Math.min(viewportWidth - 16, viewportHeight - 200))
+      } else {
+        // For larger screens, use container width as before
+        const containerWidth = containerRef.current.clientWidth
         const containerHeight = window.innerHeight
-        // Use 90% of the container width or height, whichever is smaller
         const maxSize = Math.min(containerWidth * 0.9, containerHeight * 0.7)
-        // Set a minimum size of 280px to ensure the board is always visible
         setBoardWidth(Math.max(maxSize, 280))
       }
     }
+    
     updateBoardWidth()
     window.addEventListener('resize', updateBoardWidth)
     return () => window.removeEventListener('resize', updateBoardWidth)
   }, [])
-  
+
   // Check for check state to highlight the king
   useEffect(() => {
     if (!game) return
@@ -423,15 +450,16 @@ export default function ChessBoard({
       setKingSquare(null)
     }
   }, [game])
-  
+
   return (
-    <div className="chess-board-container w-full h-full">
+    <div className="chess-board-container" ref={containerRef}>
       <div className="board-wrapper">
-        {showInvalidMove && invalidMoveMessage && (
-          <div className="invalid-move-message">
-            {invalidMoveMessage}
-          </div>
-        )}
+      {showInvalidMove && (
+        <div className="invalid-move-cross">
+          <div className="cross-line horizontal"></div>
+          <div className="cross-line vertical"></div>
+        </div>
+      )}
         <Chessboard
           position={game.fen()}
           onPieceDrop={onDrop}

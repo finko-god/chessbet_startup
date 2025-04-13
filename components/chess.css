@@ -100,31 +100,26 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0;
-  margin: 0;
+  box-sizing: border-box;
   position: relative;
 }
 
-/* board-wrapper is used for aspect-ratio purposes */
 .board-wrapper {
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  aspect-ratio: 1/1;
-  max-width: 100%;
-  max-height: 100%;
+  position: relative;
 }
 
 .board-wrapper > div {
   width: 100% !important;
   height: 100% !important;
-  max-width: 100%;
-  max-height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
 /* Move history panel */
@@ -175,86 +170,6 @@
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* Responsive adjustments */
-@media (max-width: 1024px) {
-  .chess-board-container {
-    width: 100%;
-    height: 100%;
-    padding: 0;
-  }
-  
-  .board-wrapper {
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
-  }
-  
-  .chess-clock-container {
-    max-width: 100%;
-  }
-  
-  .move-history {
-    max-height: 200px;
-  }
-}
-
-@media (max-width: 640px) {
-  .chess-board-container {
-    width: 100%;
-    height: 100%;
-    padding: 0;
-  }
-  
-  .board-wrapper {
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
-  }
-  
-  .chess-clock-container {
-    padding: 0 0.5rem;
-  }
-  
-  .chess-clock {
-    padding: 0.35rem 0.5rem;
-    min-width: 70px;
-  }
-  
-  .chess-clock .time {
-    font-size: 1rem;
-  }
-  
-  .move-history {
-    max-height: 150px;
-  }
-}
-
-@media (max-width: 640px) {
-  .chess-board-container {
-    width: 100%;
-    height: 100%;
-    padding: 0;
-  }
-  
-  .board-wrapper {
-    width: 100%;
-    height: 100%;
-    max-width: 100%;
-    max-height: 100%;
-  }
-  
-  .chess-clock-container {
-    max-width: 100%;
-    margin-top: 0.5rem;
-  }
-  
-  .move-history {
-    max-height: 150px;
-  }
-}
-
 /* Invalid move animation */
 @keyframes invalid-move {
   0% { transform: translateX(0); }
@@ -264,28 +179,129 @@
   100% { transform: translateX(0); }
 }
 
-.invalid-move {
-  animation: invalid-move 0.15s ease-in-out;
+/* Invalid move animation */
+.invalid-move-cross {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  z-index: 1000;
+  pointer-events: none;
+  animation: fadeInOut 0.5s ease-in-out;
 }
 
-.invalid-move-message {
+.cross-line {
   position: absolute;
-  top: 5px;
-  left: 50%;
-  transform: translateX(-50%);
   background-color: rgba(204, 51, 51, 0.9);
-  color: white;
-  padding: 2px 6px;
-  border-radius: 3px;
-  font-size: 9px;
-  z-index: 1000;
-  animation: fadeInOut 1s ease-in-out;
-  pointer-events: none;
+  border-radius: 2px;
+  top: 50%;
+  left: 50%;
+  transform-origin: center;
+}
+
+.horizontal {
+  width: 40px;
+  height: 4px;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.vertical {
+  width: 40px;
+  height: 4px;
+  transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 @keyframes fadeInOut {
-  0% { opacity: 0; }
-  20% { opacity: 1; }
-  80% { opacity: 1; }
-  100% { opacity: 0; }
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+  20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  .chess-board-container {
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    max-width: 100%;
+    position: relative;
+    height: auto;
+  }
+  
+  .board-wrapper {
+    width: 100%;
+    height: auto;
+    max-width: 100%;
+    aspect-ratio: 1/1;
+  }
+  
+  /* Overlay game info elements */
+  .game-info-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px;
+    font-size: 12px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 100;
+  }
+  
+  /* Small floating buttons for action controls */
+  .mobile-controls {
+    position: fixed;
+    bottom: 16px;
+    right: 16px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .mobile-control-button {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Hide elements that aren't essential for gameplay */
+  .mobile-hidden {
+    display: none !important;
+  }
+  
+  /* Compact chess clock for mobile */
+  .chess-clock-container.mobile {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    padding: 4px;
+    z-index: 100;
+  }
+  
+  .chess-clock.mobile {
+    padding: 2px 4px;
+    min-width: auto;
+    background: transparent;
+    border: none;
+  }
+  
+  .chess-clock.mobile .time {
+    font-size: 12px;
+  }
 }

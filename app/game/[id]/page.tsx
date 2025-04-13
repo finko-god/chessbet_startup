@@ -457,20 +457,23 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
               : 'Opponent\'s turn'}
           </p>
         </div>
-        <div className="bg-card rounded-lg p-3 h-[calc(100vh-400px)] min-h-[300px]">
-          <ChessBoard
-            gameId={gameId}
-            player1Id={game.player1.id}
-            player2Id={game.player2?.id}
-            whitePlayerId={game.whitePlayerId}
-            blackPlayerId={game.blackPlayerId}
-            initialFen={game.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
-            initialPgn={game.pgn}
-            onGameEnd={handleGameEnd}
-            isWhitePlayer={user?.id === game.whitePlayerId}
-            isGameStarted={game.status === 'started'}
-          />
-        </div>
+  {/* ChessBoard Container */}
+  <div className="w-full px-2"> {/* Add horizontal padding */}
+    <div className="bg-card rounded-lg aspect-square shadow-lg overflow-hidden">
+      <ChessBoard
+        gameId={gameId}
+        player1Id={game.player1.id}
+        player2Id={game.player2?.id}
+        whitePlayerId={game.whitePlayerId}
+        blackPlayerId={game.blackPlayerId}
+        initialFen={game.fen || 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'}
+        initialPgn={game.pgn}
+        onGameEnd={handleGameEnd}
+        isWhitePlayer={user?.id === game.whitePlayerId}
+        isGameStarted={game.status === 'started'}
+      />
+    </div>
+  </div>
         <ChessClock
           gameId={gameId}
           isWhitePlayer={user?.id === game.whitePlayerId}

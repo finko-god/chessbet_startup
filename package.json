@@ -17,6 +17,7 @@
     "@types/bcrypt": "^5.0.2",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.9",
+    "@vercel/analytics": "^1.5.0",
     "bcrypt": "^5.1.1",
     "bcryptjs": "^3.0.2",
     "chess.js": "^1.2.0",
