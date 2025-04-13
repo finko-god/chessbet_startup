@@ -1,4 +1,0 @@
--- AlterTable
-ALTER TABLE "Game" ADD COLUMN "lastMoveAt" DATETIME;
-ALTER TABLE "Game" ADD COLUMN "player1TimeLeft" INTEGER;
-ALTER TABLE "Game" ADD COLUMN "player2TimeLeft" INTEGER;
