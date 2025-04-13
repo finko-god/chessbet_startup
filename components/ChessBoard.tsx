@@ -264,6 +264,7 @@ export default function ChessBoard({
         return true
       }
     } catch (error) {
+      console.error('Error on drop:', error)
       setInvalidMoveSquare(sourceSquare)
       setShowInvalidMove(true)
       setInvalidMoveMessage('Invalid move!')
@@ -298,6 +299,7 @@ export default function ChessBoard({
           return
         }
       } catch (error) {
+        console.error('Error on square click:', error)
         setInvalidMoveSquare(selectedPiece)
         setShowInvalidMove(true)
         setInvalidMoveMessage('Invalid move!')

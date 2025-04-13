@@ -167,7 +167,7 @@ export function Lobby() {
       });
       
       if (response.ok) {
-        const data = await response.json();
+
         router.push(`/game/${gameId}`);
       } else {
         const error = await response.json();

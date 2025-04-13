@@ -36,8 +36,9 @@ export default function SignUpPage() {
       }
 
       router.push('/signin');
-    } catch (error) {
-      setError('An error occurred. Please try again.');
+    } catch (error) { 
+      console.error('Error signing up:', error)
+      setError('An error occurred. Please try again.' );
     }
   };
 

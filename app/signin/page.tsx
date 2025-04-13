@@ -28,8 +28,9 @@ export default function SignInPage() {
           setIsAuthenticated(true);
           router.push('/');
         }
-      } catch (error) {
-        console.error('Error checking auth:', error);
+      } catch {
+        setError('An error occurred. Please try again.');
+        setIsLoading(false);
       }
     };
 
@@ -114,7 +115,7 @@ export default function SignInPage() {
             </form>
             <div className="mt-6 text-center">
               <p className="text-muted-foreground">
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <Link href="/signup" className="text-primary hover:underline">
                   Sign Up
                 </Link>
