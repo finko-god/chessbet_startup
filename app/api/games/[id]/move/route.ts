@@ -98,7 +98,9 @@ export async function POST(
       try {
         chess.move(move)
       } catch (error) {
+        console.error('Invalid move:', error)
         return NextResponse.json({ error: 'Invalid move' }, { status: 400 })
+        
       }
 
       // Update the game with new state and times

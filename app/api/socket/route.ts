@@ -83,7 +83,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const data = await req.json();
-    const { gameId, move, fen, pgn, playerId, gameOver, winner, gameOverReason } = data;
+    const { gameId, fen, pgn, playerId, gameOver, winner } = data;
     
     if (!gameId || !fen || !pgn) {
       return NextResponse.json({ error: 'Missing required data' }, { status: 400 });
@@ -127,11 +127,7 @@ export async function POST(req: NextRequest) {
       }
     }
     
-    // Update game in database
-    const updatedGame = await prisma.game.update({
-      where: { id: gameId },
-      data: updateData
-    });
+
     
     // Update in-memory state
     const currentTimestamp = Date.now();

@@ -2,7 +2,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import jwt from 'jsonwebtoken';
-import { cookies } from 'next/headers';
 
 // Use a consistent secret
 const JWT_SECRET = process.env.JWT_SECRET || 'chessbet_supersecret_jwt_key';
@@ -72,22 +71,22 @@ export async function POST(request: Request) {
             whitePlayerId: decoded.id,
             betAmount,
             status: 'waiting',
-            ...(true as any && {
-              player1TimeLeft: FIVE_MINUTES_MS,
-              player2TimeLeft: FIVE_MINUTES_MS,
-            })
+            player1TimeLeft: FIVE_MINUTES_MS,
+            player2TimeLeft: FIVE_MINUTES_MS,
           },
         });
       });
 
       return NextResponse.json(game);
     } catch (jwtError) {
+      console.error('JWT error:', jwtError)
       return NextResponse.json(
         { error: 'Invalid authentication' },
         { status: 401 }
       );
     }
   } catch (error) {
+    console.error('Error creating game:', error)
     return NextResponse.json(
       { error: 'Failed to create game. Please try again.' },
       { status: 500 }
