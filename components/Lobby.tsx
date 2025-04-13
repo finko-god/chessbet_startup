@@ -228,11 +228,11 @@ export function Lobby() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="text-2xl font-semibold">Available Games</h2>
-        <div className="space-x-2">
-          <Button onClick={() => fetchGames()}>Refresh</Button>
-          <Button onClick={() => setIsCreateModalOpen(true)}>Create Game</Button>
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          <Button onClick={() => fetchGames()} className="w-full sm:w-auto">Refresh</Button>
+          <Button onClick={() => setIsCreateModalOpen(true)} className="w-full sm:w-auto">Create Game</Button>
         </div>
       </div>
 
