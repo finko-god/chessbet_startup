@@ -399,33 +399,35 @@ export default function ChessBoard({
     setOptionSquares({})
   }
 
-  // Update board size based on viewport and container
-  useEffect(() => {
-    const updateBoardWidth = () => {
-      if (!containerRef.current) return
-      
-      const isMobile = window.innerWidth < 768
-      
-      if (isMobile) {
-        // For mobile, use almost the full viewport width
-        const viewportWidth = window.innerWidth
-        const viewportHeight = window.innerHeight
-        
-        // Set the board size to fill maximum available space while maintaining aspect ratio
-        setBoardWidth(Math.min(viewportWidth - 16, viewportHeight - 200))
-      } else {
-        // For larger screens, use container width as before
-        const containerWidth = containerRef.current.clientWidth
-        const containerHeight = window.innerHeight
-        const maxSize = Math.min(containerWidth * 0.9, containerHeight * 0.7)
-        setBoardWidth(Math.max(maxSize, 280))
-      }
-    }
+
+// Update the boardWidth calculation in the useEffect hook
+useEffect(() => {
+  const updateBoardWidth = () => {
+    if (!containerRef.current) return
     
-    updateBoardWidth()
-    window.addEventListener('resize', updateBoardWidth)
-    return () => window.removeEventListener('resize', updateBoardWidth)
-  }, [])
+    const isMobile = window.innerWidth < 768
+    
+    if (isMobile) {
+      // For mobile, use almost the full viewport width but leave room for notation
+      const viewportWidth = window.innerWidth
+      const viewportHeight = window.innerHeight
+      
+      // Set the board size to fill maximum available space while maintaining aspect ratio
+      // Reduced by 32px to account for padding and notation
+      setBoardWidth(Math.min(viewportWidth - 32, viewportHeight - 200))
+    } else {
+      // For larger screens, use container width as before but account for notation
+      const containerWidth = containerRef.current.clientWidth
+      const containerHeight = window.innerHeight
+      const maxSize = Math.min(containerWidth * 0.85, containerHeight * 0.7) // Reduced from 0.9 to 0.85
+      setBoardWidth(Math.max(maxSize, 280))
+    }
+  }
+  
+  updateBoardWidth()
+  window.addEventListener('resize', updateBoardWidth)
+  return () => window.removeEventListener('resize', updateBoardWidth)
+}, [])
 
   // Check for check state to highlight the king
   useEffect(() => {

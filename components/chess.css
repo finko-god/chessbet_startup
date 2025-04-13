@@ -221,15 +221,16 @@
 }
 
 /* Mobile-specific optimizations */
+/* Mobile-specific optimizations */
 @media (max-width: 768px) {
   .chess-board-container {
-    padding: 8px;
     margin: 0;
-    width: 100%;
+    width: auto;
     max-width: 100%;
     position: relative;
     height: auto;
     min-height: 0;
+    padding: 12px; /* Increase padding on mobile */
   }
   
   .board-wrapper {
@@ -244,9 +245,10 @@
   .board-wrapper > div {
     width: 100% !important;
     height: auto !important;
-    max-width: calc(100vw - 16px) !important;
-    max-height: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 32px) !important; /* Adjust to account for padding */
+    max-height: calc(100vw - 32px) !important;
   }
+
 
   /* Game info elements */
   .game-info-overlay {
@@ -266,9 +268,9 @@
 }
 
 /* Ensure the chess pieces and board are properly scaled */
-@media (max-width: 768px) {
+/* @media (max-width: 768px) {
   .chess-board-container img {
     max-width: 100%;
     height: auto;
   }
-}
+} */
