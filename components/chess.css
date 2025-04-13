@@ -223,12 +223,13 @@
 /* Mobile-specific optimizations */
 @media (max-width: 768px) {
   .chess-board-container {
-    padding: 0;
+    padding: 8px;
     margin: 0;
     width: 100%;
     max-width: 100%;
     position: relative;
     height: auto;
+    min-height: 0;
   }
   
   .board-wrapper {
@@ -236,72 +237,38 @@
     height: auto;
     max-width: 100%;
     aspect-ratio: 1/1;
+    padding: 0;
+    margin: 0 auto;
   }
-  
-  /* Overlay game info elements */
+
+  .board-wrapper > div {
+    width: 100% !important;
+    height: auto !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100vw - 16px) !important;
+  }
+
+  /* Game info elements */
   .game-info-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
+    position: relative;
     width: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
     padding: 8px;
-    font-size: 12px;
-    display: flex;
-    justify-content: space-between;
-    z-index: 100;
+    margin-bottom: 8px;
   }
   
-  /* Small floating buttons for action controls */
-  .mobile-controls {
-    position: fixed;
-    bottom: 16px;
-    right: 16px;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  
-  .mobile-control-button {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: rgba(0, 0, 0, 0.7);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: none;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  }
-  
-  /* Hide elements that aren't essential for gameplay */
-  .mobile-hidden {
-    display: none !important;
-  }
-  
-  /* Compact chess clock for mobile */
+  /* Chess clock for mobile */
   .chess-clock-container.mobile {
-    position: absolute;
-    bottom: 0;
-    left: 0;
+    position: relative;
     width: 100%;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 4px;
-    z-index: 100;
+    padding: 8px;
+    margin-top: 8px;
   }
-  
-  .chess-clock.mobile {
-    padding: 2px 4px;
-    min-width: auto;
-    background: transparent;
-    border: none;
-  }
-  
-  .chess-clock.mobile .time {
-    font-size: 12px;
+}
+
+/* Ensure the chess pieces and board are properly scaled */
+@media (max-width: 768px) {
+  .chess-board-container img {
+    max-width: 100%;
+    height: auto;
   }
 }
