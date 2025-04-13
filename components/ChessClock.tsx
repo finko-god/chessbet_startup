@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 
 interface ChessClockProps {
   gameId: string;
@@ -9,12 +9,11 @@ interface ChessClockProps {
   blackTime: number;
   isWhiteTurn: boolean;
   isGameStarted: boolean;
-  onTimeEndAction: (gameId: string, winner: 'white' | 'black') => Promise<any>;
+  onTimeEndAction: (gameId: string, winner: 'white' | 'black') => Promise<void>;
 }
 
 export default function ChessClock({
   gameId,
-  isWhitePlayer,
   whiteTime,
   blackTime,
   isWhiteTurn,
@@ -108,23 +107,28 @@ export default function ChessClock({
     }
   }, [isWhiteTurn, isFirstMove]);
 
-  const updateTimeOnServer = async (white: number, black: number) => {
+  const updateTimeOnServer = useCallback(async (whiteTime: number, blackTime: number) => {
     try {
-      await fetch(`/api/games/${gameId}/time`, {
+      const response = await fetch(`/api/games/${gameId}/time`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
         body: JSON.stringify({
-          whiteTime: white,
-          blackTime: black,
+          whiteTime,
+          blackTime,
         }),
       });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update time on server');
+      }
     } catch (error) {
-      console.error('Error updating time:', error);
+      console.error('Error updating time on server:', error);
     }
-  };
+  }, [gameId]);
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60000);

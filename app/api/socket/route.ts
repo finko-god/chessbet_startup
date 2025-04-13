@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
+interface GameUpdateData {
+  fen: string;
+  pgn: string;
+  updatedAt: Date;
+  status?: 'finished';
+  winner?: string | null;
+}
+
 // Store active games and their last states
 const gameStates = new Map();
 
@@ -105,7 +113,7 @@ export async function POST(req: NextRequest) {
     console.log(`POST socket for game ${gameId}: player=${playerId}, new fen=${fen.substring(0, 20)}...`);
     
     // Update the game state in the database
-    const updateData: Record<string, any> = {
+    const updateData: GameUpdateData = {
       fen,
       pgn,
       updatedAt: new Date()

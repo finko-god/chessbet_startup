@@ -19,10 +19,31 @@ type ChessBoardProps = {
   isGameStarted?: boolean
 }
 
+interface MoveSquares {
+  [key: string]: {
+    background: string;
+    borderRadius: string;
+  };
+}
+
+interface OptionSquares {
+  [key: string]: {
+    background: string;
+    borderRadius: string;
+  };
+}
+
+interface GameState {
+  fen: string;
+  pgn: string;
+  status: string;
+  winner: string | null;
+  player1TimeLeft: number;
+  player2TimeLeft: number;
+}
+
 export default function ChessBoard({
   gameId,
-  player1Id,
-  player2Id,
   whitePlayerId,
   blackPlayerId,
   initialFen,
@@ -34,18 +55,21 @@ export default function ChessBoard({
   const [user, setUser] = useState<{ id: string } | null>(null)
   const [game, setGame] = useState<Chess>(new Chess(initialFen || undefined))
   const [currentPosition, setCurrentPosition] = useState<string>(initialFen || 'start')
-  const [moveSquares, setMoveSquares] = useState<Record<string, any>>({})
-  const [optionSquares, setOptionSquares] = useState<Record<string, any>>({})
+  const [moveSquares] = useState<MoveSquares>({})
+  const [optionSquares, setOptionSquares] = useState<OptionSquares>({})
   const [firstMoveMade, setFirstMoveMade] = useState(false)
-  const [moveHistory, setMoveHistory] = useState<string[]>([])
-  const [illegalMoveError, setIllegalMoveError] = useState<string | null>(null)
+  const [, setMoveHistory] = useState<string[]>([])
+  const [, setIllegalMoveError] = useState<string | null>(null)
   const [selectedPiece, setSelectedPiece] = useState<string | null>(null)
   const [lastMove, setLastMove] = useState<{ from: string; to: string } | null>(null)
   const [inCheck, setInCheck] = useState(false)
   const [kingSquare, setKingSquare] = useState<string | null>(null)
   const [boardWidth, setBoardWidth] = useState(400)
+  const [showInvalidMove, setShowInvalidMove] = useState(false)
+  const [invalidMoveMessage, setInvalidMoveMessage] = useState<string | null>(null)
+  const [invalidMoveSquare, setInvalidMoveSquare] = useState<string | null>(null)
   const router = useRouter()
-  const [gameState, setGameState] = useState<any>(null)
+  const [gameState, setGameState] = useState<GameState | null>(null)
   const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Fetch current user on mount
@@ -229,37 +253,59 @@ export default function ChessBoard({
         to: targetSquare,
         promotion: 'q',
       })
-      if (move === null) return false
-      updateGameState(move.san, isFirstMove)
-      if (isFirstMove) setFirstMoveMade(true)
-      setOptionSquares({})
-      setLastMove({
-        from: sourceSquare,
-        to: targetSquare
-      })
-      return true
+      if (move) {
+        updateGameState(move.san, isFirstMove)
+        if (isFirstMove) setFirstMoveMade(true)
+        setOptionSquares({})
+        setLastMove({
+          from: sourceSquare,
+          to: targetSquare
+        })
+        return true
+      }
     } catch (error) {
+      setInvalidMoveSquare(sourceSquare)
+      setShowInvalidMove(true)
+      setInvalidMoveMessage('Invalid move!')
+      setTimeout(() => {
+        setShowInvalidMove(false)
+        setInvalidMoveMessage(null)
+        setInvalidMoveSquare(null)
+      }, 1000)
       return false
     }
+    return false
   }
   
   // Handle square clicks for piece moves
   function onSquareClick(square: Square) {
     if (!isGameStarted || !isPlayerTurn) return
     if (selectedPiece) {
-      const move = game.move({
-        from: selectedPiece,
-        to: square,
-        promotion: 'q',
-      })
-      if (move !== null) {
-        updateGameState(move.san, !firstMoveMade && game.turn() === 'w')
-        setSelectedPiece(null)
-        setOptionSquares({})
-        setLastMove({
+      try {
+        const move = game.move({
           from: selectedPiece,
-          to: square
+          to: square,
+          promotion: 'q',
         })
+        if (move) {
+          updateGameState(move.san, !firstMoveMade && game.turn() === 'w')
+          setSelectedPiece(null)
+          setOptionSquares({})
+          setLastMove({
+            from: selectedPiece,
+            to: square
+          })
+          return
+        }
+      } catch (error) {
+        setInvalidMoveSquare(selectedPiece)
+        setShowInvalidMove(true)
+        setInvalidMoveMessage('Invalid move!')
+        setTimeout(() => {
+          setShowInvalidMove(false)
+          setInvalidMoveMessage(null)
+          setInvalidMoveSquare(null)
+        }, 1000)
         return
       }
       if (square === selectedPiece) {
@@ -293,7 +339,7 @@ export default function ChessBoard({
   function showPossibleMoves(square: Square) {
     const moves = game.moves({ square, verbose: true })
     if (moves.length > 0) {
-      const newSquares: Record<string, any> = {}
+      const newSquares: OptionSquares = {}
       moves.forEach((move) => {
         newSquares[move.to] = move.captured
           ? {
@@ -314,8 +360,8 @@ export default function ChessBoard({
     if (!isPlayerTurn) return
     const moves = game.moves({ square: sourceSquare as Square, verbose: true })
     if (moves.length > 0) {
-      const newSquares: Record<string, any> = {}
-      moves.forEach((move: any) => {
+      const newSquares: OptionSquares = {}
+      moves.forEach((move) => {
         newSquares[move.to] = move.captured
           ? {
               background: 'radial-gradient(circle, transparent 70%, rgba(255, 255, 255, 0.8) 70%)',
@@ -379,6 +425,11 @@ export default function ChessBoard({
   return (
     <div className="chess-board-container w-full h-full">
       <div className="board-wrapper">
+        {showInvalidMove && invalidMoveMessage && (
+          <div className="invalid-move-message">
+            {invalidMoveMessage}
+          </div>
+        )}
         <Chessboard
           position={game.fen()}
           onPieceDrop={onDrop}
@@ -402,6 +453,9 @@ export default function ChessBoard({
             ...(lastMove ? {
               [lastMove.from]: { backgroundColor: 'rgba(98, 153, 36, 0.15)' },
               [lastMove.to]: { backgroundColor: 'rgba(98, 153, 36, 0.15)' }
+            } : {}),
+            ...(invalidMoveSquare ? {
+              [invalidMoveSquare]: { animation: 'invalid-move 0.15s ease-in-out' }
             } : {}),
             ...(inCheck && kingSquare ? {
               [kingSquare]: { backgroundColor: 'rgba(204, 51, 51, 0.2)' }

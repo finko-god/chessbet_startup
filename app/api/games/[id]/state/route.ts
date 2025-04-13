@@ -6,6 +6,14 @@ import { prisma } from '@/lib/prisma'
 // Use a consistent secret
 const JWT_SECRET = process.env.JWT_SECRET || 'chessbet_supersecret_jwt_key';
 
+interface GameUpdateData {
+  fen?: string;
+  pgn?: string;
+  status?: string;
+  player1TimeLeft?: number;
+  player2TimeLeft?: number;
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -152,7 +160,7 @@ export async function PUT(
         );
       }
 
-      const updateData: any = {};
+      const updateData: GameUpdateData = {};
 
       if (fen) updateData.fen = fen;
       if (pgn) updateData.pgn = pgn;
