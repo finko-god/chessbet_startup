@@ -43,6 +43,13 @@ export async function POST(request: Request) {
         );
       }
 
+      if (betAmount > 10) {
+        return NextResponse.json(
+          { error: 'Maximum bet amount is 10 ChessCoins' },
+          { status: 400 }
+        );
+      }
+
       // Verify user exists in database and has enough ChessCoins
       const user = await prisma.user.findUnique({
         where: { id: decoded.id }

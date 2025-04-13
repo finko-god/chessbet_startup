@@ -80,19 +80,20 @@ export async function POST(
         // First, check again if game is finished (to prevent race conditions)
         const currentGame = await tx.game.findUnique({
           where: { id: gameId },
-          select: { status: true }
+          select: { status: true, betProcessed: true }
         });
 
-        if (currentGame?.status === 'finished') {
-          throw new Error('Game is already finished');
+        if (currentGame?.status === 'finished' && currentGame?.betProcessed) {
+          throw new Error('Game is already finished and bets processed');
         }
 
-        // Update game status
+        // Update game status and mark bets as processed
         const game = await tx.game.update({
           where: { id: gameId },
           data: {
             status: 'finished',
             winner: winnerId,
+            betProcessed: true,
           },
         });
 
@@ -109,20 +110,18 @@ export async function POST(
             select: { chessCoin: true }
           }) : null;
 
-          if (winner) {
-            // Update winner's balance (add both bets)
-            await tx.user.update({
-              where: { id: winnerId },
-              data: { chessCoin: winner.chessCoin + game.betAmount }
-            });
-          }
-
-          if (loser && loserId) {
-            // Update loser's balance (subtract their bet)
-            await tx.user.update({
-              where: { id: loserId },
-              data: { chessCoin: Math.max(0, loser.chessCoin - game.betAmount) }
-            });
+          // Process winner's gain and loser's loss in a single transaction
+          if (winner && loser && loserId) {
+            await Promise.all([
+              tx.user.update({
+                where: { id: winnerId },
+                data: { chessCoin: winner.chessCoin + game.betAmount }
+              }),
+              tx.user.update({
+                where: { id: loserId },
+                data: { chessCoin: Math.max(0, loser.chessCoin - game.betAmount) }
+              })
+            ]);
           }
         } else {
           // In case of a draw, return ChessCoins to both players
@@ -135,18 +134,17 @@ export async function POST(
             select: { chessCoin: true }
           }) : null;
 
-          if (player1) {
-            await tx.user.update({
-              where: { id: game.player1Id },
-              data: { chessCoin: player1.chessCoin + game.betAmount }
-            });
-          }
-
-          if (player2 && game.player2Id) {
-            await tx.user.update({
-              where: { id: game.player2Id },
-              data: { chessCoin: player2.chessCoin + game.betAmount }
-            });
+          if (player1 && player2 && game.player2Id) {
+            await Promise.all([
+              tx.user.update({
+                where: { id: game.player1Id },
+                data: { chessCoin: player1.chessCoin + game.betAmount }
+              }),
+              tx.user.update({
+                where: { id: game.player2Id },
+                data: { chessCoin: player2.chessCoin + game.betAmount }
+              })
+            ]);
           }
         }
 

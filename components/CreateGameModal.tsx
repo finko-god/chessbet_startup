@@ -26,6 +26,11 @@ export function CreateGameModal({ isOpen, onCloseAction, onCreateAction }: Creat
       return;
     }
 
+    if (amount > 10) {
+      setError('Maximum bet amount is 10 ChessCoins');
+      return;
+    }
+
     await onCreateAction(amount);
     setBetAmount('');
   };
@@ -38,11 +43,12 @@ export function CreateGameModal({ isOpen, onCloseAction, onCreateAction }: Creat
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="betAmount">Bet Amount</Label>
+            <Label htmlFor="betAmount">Bet Amount (max 10)</Label>
             <Input
               id="betAmount"
               type="number"
               min="1"
+              max="10"
               value={betAmount}
               onChange={(e) => setBetAmount(e.target.value)}
               placeholder="Enter bet amount"

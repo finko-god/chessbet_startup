@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
+import ChessCoinBalance from '@/components/ChessCoinBalance';
 
 export default function Header() {
   const [user, setUser] = useState(null);
@@ -63,7 +64,6 @@ export default function Header() {
               >
                 Play
               </Link>
- 
             </nav>
           </div>
           
@@ -72,8 +72,8 @@ export default function Header() {
               <div className="text-muted-foreground">Loading...</div>
             ) : user ? (
               <>
-                <div className="hidden text-primary md:flex items-center space-x-2">
-                  {/* <ChessCoinBalance /> */}
+                <div className="hidden md:flex items-center space-x-2">
+                  <ChessCoinBalance />
                 </div>
                 <Link href="/account">
                   <Button variant="ghost" size="sm" className="hover:text-muted-foreground text-primary">

@@ -41,6 +41,7 @@ model Game {
   player1TimeLeft Int?     // Time left in milliseconds for white player (creator)
   player2TimeLeft Int?     // Time left in milliseconds for black player (joiner)
   lastMoveAt     DateTime? // Timestamp of the last move
+  betProcessed Boolean  @default(false) // Track if bets have been processed
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
