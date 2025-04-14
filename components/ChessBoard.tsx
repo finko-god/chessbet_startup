@@ -292,10 +292,10 @@ export default function ChessBoard({
         setShowInvalidMove(true)
         
         // Clear animation state after a shorter duration
-        const animationTimeout = setTimeout(() => {
-          setShowInvalidMove(false)
-          setInvalidMoveSquare(null)
-        }, 300) // Reduced from 1000ms to 300ms for snappier feedback
+        // const animationTimeout = setTimeout(() => {
+        //   setShowInvalidMove(false)
+        //   setInvalidMoveSquare(null)
+        // }, 300) // Reduced from 1000ms to 300ms for snappier feedback
         
         return
       }
