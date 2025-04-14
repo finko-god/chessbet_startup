@@ -48,6 +48,7 @@ export const config = {
     '/account/:path*',
     '/game/:path*',
     '/signin',
-    '/signup'
+    '/signup',
+    '/((?!api/pusher/auth).*)'  // Exclude Pusher auth route from middleware
   ]
 }; 

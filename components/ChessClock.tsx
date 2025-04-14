@@ -1,6 +1,9 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
+import { usePusherChannel } from '@/hooks/usePusherChannel';
+import { getPusherClient } from '@/lib/pusherClient';
+import { debounce } from 'lodash';
 
 interface ChessClockProps {
   gameId: string;
@@ -20,6 +23,7 @@ export default function ChessClock({
   isGameStarted,
   onTimeEndAction,
 }: ChessClockProps) {
+  const channelName = `private-game-${gameId}`;
   const [whiteTimeLeft, setWhiteTimeLeft] = useState(whiteTime);
   const [blackTimeLeft, setBlackTimeLeft] = useState(blackTime);
   const [isFirstMove, setIsFirstMove] = useState(true);
@@ -28,6 +32,22 @@ export default function ChessClock({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const prevWhiteTimeRef = useRef(whiteTime);
   const prevBlackTimeRef = useRef(blackTime);
+  
+  // Pusher integration
+  const handleTimeUpdate = useCallback(({ whiteTime, blackTime }: { 
+    whiteTime: number
+    blackTime: number 
+  }) => {
+    console.log('Time update received:', whiteTime, blackTime)
+    setWhiteTimeLeft(whiteTime)
+    setBlackTimeLeft(blackTime)
+  }, [])
+
+  const eventHandlers = useMemo(() => ({
+    'time-update': handleTimeUpdate
+  }), [handleTimeUpdate])
+
+  usePusherChannel(channelName, eventHandlers)
   
   // Sync local clock with server times when props change
   useEffect(() => {
@@ -115,28 +135,39 @@ export default function ChessClock({
     }
   }, [isWhiteTurn, isFirstMove]);
 
-  const updateTimeOnServer = useCallback(async (whiteTime: number, blackTime: number) => {
-    try {
-      const response = await fetch(`/api/games/${gameId}/time`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          whiteTime,
-          blackTime,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update time on server');
+  // Throttle server updates
+  const updateTimeOnServer = useCallback(debounce(async (whiteTime: number, blackTime: number) => {
+    // Only send update if time difference is significant (more than 1 second)
+    const timeDiff = Math.abs(whiteTime - prevWhiteTimeRef.current) > 1000 || 
+                    Math.abs(blackTime - prevBlackTimeRef.current) > 1000
+
+    if (timeDiff) {
+      try {
+        const response = await fetch(`/api/games/${gameId}/time`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            whiteTime,
+            blackTime,
+          }),
+        })
+        
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || 'Failed to update time on server')
+        }
+
+        // Update previous time references
+        prevWhiteTimeRef.current = whiteTime
+        prevBlackTimeRef.current = blackTime
+      } catch (error) {
+        console.error('Error updating time on server:', error)
       }
-    } catch (error) {
-      console.error('Error updating time on server:', error);
     }
-  }, [gameId]);
+  }, 2000), [gameId]) // Increased debounce time to 2 seconds
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60000);

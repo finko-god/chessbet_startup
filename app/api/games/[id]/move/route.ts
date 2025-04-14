@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import jwt from 'jsonwebtoken'
 import { Chess } from 'chess.js'
+import { pusherServer } from '@/lib/pusher'
 
 // Use a consistent secret
 const JWT_SECRET = process.env.JWT_SECRET || 'chessbet_supersecret_jwt_key'
@@ -100,7 +101,6 @@ export async function POST(
       } catch (error) {
         console.error('Invalid move:', error)
         return NextResponse.json({ error: 'Invalid move' }, { status: 400 })
-        
       }
 
       // Update the game with new state and times
@@ -113,6 +113,16 @@ export async function POST(
           player2TimeLeft: blackTime,
           lastMoveAt: new Date(timestamp),
         },
+      })
+
+      // Trigger Pusher events
+      await pusherServer.trigger(`private-game-${gameId}`, 'move-made', {
+        fen: updatedGame.fen,
+        pgn: updatedGame.pgn,
+        status: updatedGame.status,
+        winner: updatedGame.winner,
+        player1TimeLeft: updatedGame.player1TimeLeft,
+        player2TimeLeft: updatedGame.player2TimeLeft
       })
 
       return NextResponse.json(updatedGame)

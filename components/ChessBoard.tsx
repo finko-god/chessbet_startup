@@ -4,6 +4,8 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { Chessboard } from 'react-chessboard'
 import { Chess, Square } from 'chess.js'
 import { useRouter } from 'next/navigation'
+import { usePusherChannel } from '@/hooks/usePusherChannel'
+import { getPusherClient } from '@/lib/pusherClient'
 import './chess.css'
 
 type ChessBoardProps = {
@@ -19,6 +21,7 @@ type ChessBoardProps = {
   isGameStarted?: boolean
 }
 
+
 interface MoveSquares {
   [key: string]: {
     background: string;
@@ -26,12 +29,14 @@ interface MoveSquares {
   };
 }
 
+
 interface OptionSquares {
   [key: string]: {
     background: string;
     borderRadius: string;
   };
 }
+
 
 interface GameState {
   fen: string;
@@ -52,6 +57,8 @@ export default function ChessBoard({
   isWhitePlayer,
   isGameStarted,
 }: ChessBoardProps) {
+  const channelName = `private-game-${gameId}`
+  const pusherClient = getPusherClient()
   const [user, setUser] = useState<{ id: string } | null>(null)
   const [game, setGame] = useState<Chess>(new Chess(initialFen || undefined))
   const [currentPosition, setCurrentPosition] = useState<string>(initialFen || 'start')
@@ -66,11 +73,9 @@ export default function ChessBoard({
   const [kingSquare, setKingSquare] = useState<string | null>(null)
   const [boardWidth, setBoardWidth] = useState(400)
   const [showInvalidMove, setShowInvalidMove] = useState(false)
-  const [, setInvalidMoveMessage] = useState<string | null>(null)
   const [invalidMoveSquare, setInvalidMoveSquare] = useState<string | null>(null)
   const router = useRouter()
   const [gameState, setGameState] = useState<GameState | null>(null)
-  const pollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
 
   // Fetch current user on mount
@@ -109,49 +114,60 @@ export default function ChessBoard({
     }
   }, [gameState?.pgn])
   
-  // Helper to update game state via API
+  // Pusher integration
+  const handleMoveEvent = useCallback((gameState: GameState) => {
+    try {
+      const newChess = new Chess()
+      if (gameState.pgn) {
+        newChess.loadPgn(gameState.pgn)
+        setMoveHistory(newChess.history())
+      }
+      setGame(newChess)
+      setCurrentPosition(gameState.fen)
+      
+      const history = newChess.history({ verbose: true })
+      if (history.length > 0) {
+        const lastMoveItem = history[history.length - 1]
+        setLastMove({ from: lastMoveItem.from, to: lastMoveItem.to })
+      }
+
+      if (newChess.isGameOver()) {
+        const winner = newChess.isCheckmate() 
+          ? newChess.turn() === 'w' ? (whitePlayerId || null) : (blackPlayerId || null)
+          : null
+        onGameEnd?.(winner, newChess.isCheckmate() ? 'checkmate' : 'Game finished')
+      }
+    } catch (error) {
+      console.error('Error processing move event:', error)
+    }
+  }, [blackPlayerId, whitePlayerId, onGameEnd])
+
+  const eventHandlers = useMemo(() => ({
+    'move-made': handleMoveEvent
+  }), [handleMoveEvent])
+
+  usePusherChannel(channelName, eventHandlers)
+
+  
+
+  // Modify updateGameState to trigger Pusher
   const updateGameState = useCallback(
     async (move: string, isFirstMove: boolean = false) => {
       try {
         const response = await fetch(`/api/games/${gameId}/move`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({
-            move,
-            timestamp: Date.now(),
-            isFirstMove,
-          }),
+          body: JSON.stringify({ move, timestamp: Date.now(), isFirstMove }),
         })
-        
+
         if (!response.ok) {
           const errorData = await response.json()
           throw new Error(errorData.error || 'Failed to update game state')
         }
-    
-        const newGameState = await response.json()
-        setGameState(newGameState)
-        
-        // Update game instance using PGN if available
-        const newChess = new Chess()
-        if (newGameState.pgn) {
-          newChess.loadPgn(newGameState.pgn)
-          setMoveHistory(newChess.history())
-        }
-        setGame(newChess)
-        setCurrentPosition(newGameState.fen)
-    
-        // Update last move for highlighting
-        const history = newChess.history({ verbose: true })
-        if (history.length > 0) {
-          const lastMoveItem = history[history.length - 1]
-          setLastMove({
-            from: lastMoveItem.from,
-            to: lastMoveItem.to
-          })
-        }
+
+        // Local state updates removed here since they'll come from Pusher events
+
       } catch (error) {
         console.error('Error updating game state:', error)
         setIllegalMoveError(error instanceof Error ? error.message : 'Invalid move')
@@ -159,63 +175,20 @@ export default function ChessBoard({
     },
     [gameId]
   )
-  
-  // Poll game state periodically
-  const pollGameState = useCallback(async () => {
-    if (!user) return
-    try {
-      const response = await fetch(`/api/games/${gameId}`)
-      if (!response.ok) throw new Error('Failed to fetch game state')
-      const newGameState = await response.json()
-      setGameState(newGameState)
-      
-      if (newGameState.fen && newGameState.fen !== currentPosition) {
-        const newChess = new Chess()
-        if (newGameState.pgn) {
-          newChess.loadPgn(newGameState.pgn)
-          const history = newChess.history({ verbose: true })
-          if (history.length > 0) {
-            const lastMoveItem = history[history.length - 1]
-            setLastMove({
-              from: lastMoveItem.from,
-              to: lastMoveItem.to
-            })
-          }
-        }
-        setGame(newChess)
-        setCurrentPosition(newGameState.fen)
-  
-        if (newChess.isCheckmate()) {
-          const winner = newChess.turn() === 'w' ? blackPlayerId : whitePlayerId
-          if (onGameEnd && winner) {
-            onGameEnd(winner, 'checkmate')
-          }
-          router.push('/')
-        }
-      }
-  
-      if (newGameState.status === 'finished') {
-        if (onGameEnd) {
-          onGameEnd(newGameState.winner, 'Game finished')
-        }
-        router.push('/')
-      }
-    } catch (error) {
-      console.error('Error polling game state:', error)
-    }
-  }, [gameId, user, router, currentPosition, onGameEnd, whitePlayerId, blackPlayerId])
-  
+
   useEffect(() => {
-    if (gameId && user) {
-      pollGameState()
-      const interval = setInterval(pollGameState, 500)
-      return () => {
-        clearInterval(interval)
-        if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current)
+    const handleConnectionChange = (state: string) => {
+      if (state === 'connected') {
+        pusherClient.subscribe(channelName)
       }
     }
-  }, [gameId, user, pollGameState])
-  
+
+    pusherClient.connection.bind('state_change', handleConnectionChange)
+    return () => {
+      pusherClient.connection.unbind('state_change', handleConnectionChange)
+    }
+  }, [channelName])
+
   // Load initial game state if provided via props
   useEffect(() => {
     try {
@@ -275,13 +248,11 @@ export default function ChessBoard({
     } catch (error) {
       console.error('Error on drop:', error)
       setInvalidMoveSquare(sourceSquare)
+      setShowInvalidMove(true)
+      
+      // Clear animation state after a shorter duration
 
-      setShowInvalidMove(true);
-      setTimeout(() => {
-        setShowInvalidMove(false)
-        setInvalidMoveMessage(null)
-        setInvalidMoveSquare(null)
-      }, 1000)
+      
       return false
     }
     return false
@@ -319,12 +290,13 @@ export default function ChessBoard({
         console.error('Error on square click:', error)
         setInvalidMoveSquare(selectedPiece)
         setShowInvalidMove(true)
-
-        setTimeout(() => {
+        
+        // Clear animation state after a shorter duration
+        const animationTimeout = setTimeout(() => {
           setShowInvalidMove(false)
-          setInvalidMoveMessage(null)
           setInvalidMoveSquare(null)
-        }, 1000)
+        }, 300) // Reduced from 1000ms to 300ms for snappier feedback
+        
         return
       }
       if (square === selectedPiece) {
@@ -453,15 +425,75 @@ useEffect(() => {
     }
   }, [game])
 
+  const pollGameState = useCallback(async () => {
+    if (!user) return
+    try {
+      const response = await fetch(`/api/games/${gameId}`)
+      if (!response.ok) throw new Error('Failed to fetch game state')
+      const newGameState = await response.json()
+      setGameState(newGameState)
+      
+      if (newGameState.fen && newGameState.fen !== currentPosition) {
+        const newChess = new Chess()
+        if (newGameState.pgn) {
+          newChess.loadPgn(newGameState.pgn)
+          const history = newChess.history({ verbose: true })
+          if (history.length > 0) {
+            const lastMoveItem = history[history.length - 1]
+            setLastMove({
+              from: lastMoveItem.from,
+              to: lastMoveItem.to
+            })
+          }
+        }
+        setGame(newChess)
+        setCurrentPosition(newGameState.fen)
+  
+        if (newChess.isCheckmate()) {
+          const winner = newChess.turn() === 'w' ? blackPlayerId : whitePlayerId
+          if (onGameEnd && winner) {
+            onGameEnd(winner, 'checkmate')
+            // Update game state in database
+            await fetch(`/api/games/${gameId}/state`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                status: 'finished',
+                winner: winner
+              })
+            })
+          }
+          router.push('/')
+        }
+      }
+  
+      if (newGameState.status === 'finished') {
+        if (onGameEnd) {
+          onGameEnd(newGameState.winner, 'Game finished')
+        }
+        router.push('/')
+      }
+    } catch (error) {
+      console.error('Error polling game state:', error)
+    }
+  }, [gameId, user, router, currentPosition, onGameEnd, whitePlayerId, blackPlayerId])
+
+  // Poll game state periodically
+  useEffect(() => {
+    const interval = setInterval(pollGameState, 1000) // Poll every second
+    return () => clearInterval(interval)
+  }, [pollGameState])
+
   return (
     <div className="chess-board-container" ref={containerRef}>
       <div className="board-wrapper">
       {showInvalidMove && (
-        <div className="invalid-move-cross">
-          <div className="cross-line horizontal"></div>
-          <div className="cross-line vertical"></div>
-        </div>
-      )}
+  <div className="invalid-move-cross">
+    <div className="cross-line horizontal"></div>
+    <div className="cross-line vertical"></div>
+  </div>
+)}
         <Chessboard
           position={game.fen()}
           onPieceDrop={onDrop}

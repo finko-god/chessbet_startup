@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma';
 // import { getServerSession } from 'next-auth';
 // import { authOptions } from '@/lib/auth';
 import jwt from 'jsonwebtoken';
+import { pusherServer } from '@/lib/pusher';
 
 // Use a consistent secret
 const JWT_SECRET = process.env.JWT_SECRET || 'chessbet_supersecret_jwt_key';
@@ -39,7 +40,7 @@ export async function PUT(
       }
 
       const { id } = await params;
-      const { player1TimeLeft, player2TimeLeft } = await request.json();
+      const { whiteTime, blackTime } = await request.json();
 
       // Get the game
       const game = await prisma.game.findUnique({
@@ -54,7 +55,7 @@ export async function PUT(
       }
 
       // Verify user is a participant
-      if (game.player1Id !== decoded.id && game.player2Id !== decoded.id) {
+      if (game.whitePlayerId !== decoded.id && game.blackPlayerId !== decoded.id) {
         return NextResponse.json(
           { error: 'You are not a participant in this game' },
           { status: 403 }
@@ -65,9 +66,15 @@ export async function PUT(
       const updatedGame = await prisma.game.update({
         where: { id },
         data: {
-          player1TimeLeft,
-          player2TimeLeft,
+          player1TimeLeft: whiteTime,
+          player2TimeLeft: blackTime,
         },
+      });
+
+      // Trigger Pusher event
+      await pusherServer.trigger(`private-game-${id}`, 'time-update', {
+        whiteTime: updatedGame.player1TimeLeft,
+        blackTime: updatedGame.player2TimeLeft
       });
 
       return NextResponse.json(updatedGame);

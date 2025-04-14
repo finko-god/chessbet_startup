@@ -97,54 +97,56 @@ export async function POST(
           },
         });
 
-        // Handle ChessCoin transfers
-        if (winnerId) {
-          // Get current balances
-          const winner = await tx.user.findUnique({
-            where: { id: winnerId },
-            select: { chessCoin: true }
-          });
-          const loserId = game.player1Id === winnerId ? game.player2Id : game.player1Id;
-          const loser = loserId ? await tx.user.findUnique({
-            where: { id: loserId },
-            select: { chessCoin: true }
-          }) : null;
+        // Handle ChessCoin transfers only if bets haven't been processed yet
+        if (!currentGame?.betProcessed) {
+          if (winnerId) {
+            // Get current balances
+            const winner = await tx.user.findUnique({
+              where: { id: winnerId },
+              select: { chessCoin: true }
+            });
+            const loserId = game.player1Id === winnerId ? game.player2Id : game.player1Id;
+            const loser = loserId ? await tx.user.findUnique({
+              where: { id: loserId },
+              select: { chessCoin: true }
+            }) : null;
 
-          // Process winner's gain and loser's loss in a single transaction
-          if (winner && loser && loserId) {
-            await Promise.all([
-              tx.user.update({
-                where: { id: winnerId },
-                data: { chessCoin: winner.chessCoin + game.betAmount }
-              }),
-              tx.user.update({
-                where: { id: loserId },
-                data: { chessCoin: Math.max(0, loser.chessCoin - game.betAmount) }
-              })
-            ]);
-          }
-        } else {
-          // In case of a draw, return ChessCoins to both players
-          const player1 = await tx.user.findUnique({
-            where: { id: game.player1Id },
-            select: { chessCoin: true }
-          });
-          const player2 = game.player2Id ? await tx.user.findUnique({
-            where: { id: game.player2Id },
-            select: { chessCoin: true }
-          }) : null;
+            // Process winner's gain and loser's loss in a single transaction
+            if (winner && loser && loserId) {
+              await Promise.all([
+                tx.user.update({
+                  where: { id: winnerId },
+                  data: { chessCoin: winner.chessCoin + game.betAmount }
+                }),
+                tx.user.update({
+                  where: { id: loserId },
+                  data: { chessCoin: Math.max(0, loser.chessCoin - game.betAmount) }
+                })
+              ]);
+            }
+          } else {
+            // In case of a draw, return ChessCoins to both players
+            const player1 = await tx.user.findUnique({
+              where: { id: game.player1Id },
+              select: { chessCoin: true }
+            });
+            const player2 = game.player2Id ? await tx.user.findUnique({
+              where: { id: game.player2Id },
+              select: { chessCoin: true }
+            }) : null;
 
-          if (player1 && player2 && game.player2Id) {
-            await Promise.all([
-              tx.user.update({
-                where: { id: game.player1Id },
-                data: { chessCoin: player1.chessCoin + game.betAmount }
-              }),
-              tx.user.update({
-                where: { id: game.player2Id },
-                data: { chessCoin: player2.chessCoin + game.betAmount }
-              })
-            ]);
+            if (player1 && player2 && game.player2Id) {
+              await Promise.all([
+                tx.user.update({
+                  where: { id: game.player1Id },
+                  data: { chessCoin: player1.chessCoin + game.betAmount }
+                }),
+                tx.user.update({
+                  where: { id: game.player2Id },
+                  data: { chessCoin: player2.chessCoin + game.betAmount }
+                })
+              ]);
+            }
           }
         }
 
