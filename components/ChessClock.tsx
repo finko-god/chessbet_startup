@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { usePusherChannel } from '@/hooks/usePusherChannel';
-import { getPusherClient } from '@/lib/pusherClient';
+
 import { debounce } from 'lodash';
 
 interface ChessClockProps {
