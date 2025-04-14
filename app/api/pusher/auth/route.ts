@@ -1,3 +1,5 @@
+'use server';
+
 import { NextRequest, NextResponse } from 'next/server'
 import { pusherServer } from '@/lib/pusher'
 import jwt from 'jsonwebtoken'
