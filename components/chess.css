@@ -190,11 +190,7 @@
   z-index: 1000;
   pointer-events: none;
   animation: fadeInOut 0.5s ease-in-out;
-  /* Add these lines to ensure it doesn't affect the layout */
-  margin: 0;
-  padding: 0;
 }
-
 
 .cross-line {
   position: absolute;
@@ -239,15 +235,11 @@
   
   .board-wrapper {
     width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    /* Add this to prevent layout shifts */
-    min-height: 280px;
-    transform: translateZ(0);
-    will-change: transform;
+    height: auto;
+    max-width: 100%;
+    aspect-ratio: 1/1;
+    padding: 0;
+    margin: 0 auto;
   }
 
   .board-wrapper > div {
