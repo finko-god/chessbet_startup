@@ -72,8 +72,6 @@ export default function ChessBoard({
   const [inCheck, setInCheck] = useState(false)
   const [kingSquare, setKingSquare] = useState<string | null>(null)
   const [boardWidth, setBoardWidth] = useState(400)
-  const [showInvalidMove, setShowInvalidMove] = useState(false)
-  const [invalidMoveSquare, setInvalidMoveSquare] = useState<string | null>(null)
   const router = useRouter()
   const [gameState, setGameState] = useState<GameState | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
