@@ -94,7 +94,7 @@ export async function POST(request: Request) {
 
   // Handle person verification events (part of KYC)
   if (event.type === 'person.updated') {
-    const person = event.data.object as any; // Using any as Person type might not be fully defined
+    const person = event.data.object as Stripe.Person;
     const account = person.account;
     
     const user = await prisma.user.findFirst({
