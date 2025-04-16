@@ -247,12 +247,6 @@ export default function ChessBoard({
       }
     } catch (error) {
       console.error('Error on drop:', error)
-      setInvalidMoveSquare(sourceSquare)
-      setShowInvalidMove(true)
-      
-      // Clear animation state after a shorter duration
-
-      
       return false
     }
     return false
@@ -288,15 +282,6 @@ export default function ChessBoard({
         }
       } catch (error) {
         console.error('Error on square click:', error)
-        setInvalidMoveSquare(selectedPiece)
-        setShowInvalidMove(true)
-        
-        // Clear animation state after a shorter duration
-        // const animationTimeout = setTimeout(() => {
-        //   setShowInvalidMove(false)
-        //   setInvalidMoveSquare(null)
-        // }, 300) // Reduced from 1000ms to 300ms for snappier feedback
-        
         return
       }
       if (square === selectedPiece) {
@@ -488,12 +473,6 @@ useEffect(() => {
   return (
     <div className="chess-board-container" ref={containerRef}>
       <div className="board-wrapper">
-      {showInvalidMove && (
-  <div className="invalid-move-cross">
-    <div className="cross-line horizontal"></div>
-    <div className="cross-line vertical"></div>
-  </div>
-)}
         <Chessboard
           position={game.fen()}
           onPieceDrop={onDrop}
@@ -517,9 +496,6 @@ useEffect(() => {
             ...(lastMove ? {
               [lastMove.from]: { backgroundColor: 'rgba(98, 153, 36, 0.15)' },
               [lastMove.to]: { backgroundColor: 'rgba(98, 153, 36, 0.15)' }
-            } : {}),
-            ...(invalidMoveSquare ? {
-              [invalidMoveSquare]: { animation: 'invalid-move 0.15s ease-in-out' }
             } : {}),
             ...(inCheck && kingSquare ? {
               [kingSquare]: { backgroundColor: 'rgba(204, 51, 51, 0.2)' }

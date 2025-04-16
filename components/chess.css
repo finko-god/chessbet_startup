@@ -170,57 +170,6 @@
   background-color: rgba(0, 0, 0, 0.05);
 }
 
-/* Invalid move animation */
-@keyframes invalid-move {
-  0% { transform: translateX(0); }
-  25% { transform: translateX(-1px); }
-  50% { transform: translateX(1px); }
-  75% { transform: translateX(-1px); }
-  100% { transform: translateX(0); }
-}
-
-/* Invalid move animation */
-.invalid-move-cross {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 40px;
-  height: 40px;
-  z-index: 1000;
-  pointer-events: none;
-  animation: fadeInOut 0.5s ease-in-out;
-}
-
-.cross-line {
-  position: absolute;
-  background-color: rgba(204, 51, 51, 0.9);
-  border-radius: 2px;
-  top: 50%;
-  left: 50%;
-  transform-origin: center;
-}
-
-.horizontal {
-  width: 40px;
-  height: 4px;
-  transform: translate(-50%, -50%) rotate(45deg);
-}
-
-.vertical {
-  width: 40px;
-  height: 4px;
-  transform: translate(-50%, -50%) rotate(-45deg);
-}
-
-@keyframes fadeInOut {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
-  20% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-  100% { opacity: 0; transform: translate(-50%, -50%) scale(0); }
-}
-
-/* Mobile-specific optimizations */
 /* Mobile-specific optimizations */
 @media (max-width: 768px) {
   .chess-board-container {
@@ -248,7 +197,6 @@
     max-width: calc(100vw - 32px) !important; /* Adjust to account for padding */
     max-height: calc(100vw - 32px) !important;
   }
-
 
   /* Game info elements */
   .game-info-overlay {

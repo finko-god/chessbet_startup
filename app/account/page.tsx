@@ -4,40 +4,47 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import ChessCoinBalance from '@/components/ChessCoinBalance';
 
 interface User {
   id: string;
   name: string;
   email: string;
+  chessCoin: number;
+  stripeConnectId: string | null;
+  ableForPayouts: boolean;
 }
 
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include',
-        });
-        
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-        } else {
-          router.push('/signin');
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
+      } else {
         router.push('/signin');
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      router.push('/signin');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchUserData();
   }, [router]);
 
@@ -55,6 +62,69 @@ export default function AccountPage() {
       }
     } catch (error) {
       console.error('Sign out error:', error);
+    }
+  };
+
+  const handleTopUp = async () => {
+    try {
+      const response = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: user?.email,
+        }),
+      });
+
+      const { url } = await response.json();
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error creating checkout session:', error);
+    }
+  };
+
+  const handleVerifyAccount = async () => {
+    try {
+      const response = await fetch('/api/stripe/create-connect-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const { url } = await response.json();
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error creating connect account:', error);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    try {
+      const amount = parseInt(withdrawAmount);
+      if (isNaN(amount) || amount <= 0) {
+        return;
+      }
+
+      const response = await fetch('/api/stripe/create-payout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount }),
+      });
+
+      if (response.ok) {
+        setIsWithdrawDialogOpen(false);
+        // Refresh user data to update balance
+        await fetchUserData();
+      } else {
+        const error = await response.json();
+        console.error('Withdrawal failed:', error);
+      }
+    } catch (error) {
+      console.error('Error processing withdrawal:', error);
     }
   };
 
@@ -105,8 +175,29 @@ export default function AccountPage() {
             <CardTitle className="text-2xl font-bold text-foreground">ChessCoins Balance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-col text-primary items-center justify-center py-8">
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
               <ChessCoinBalance />
+              <div className="flex space-x-4 w-full max-w-xs">
+                <Button
+                  onClick={handleVerifyAccount}
+                  className={`flex-1 ${user.ableForPayouts ? 'bg-gray-400 cursor-not-allowed' : ''}`}
+                  disabled={user.ableForPayouts}
+                  title={user.ableForPayouts ? 'Account already verified' : 'Verify account for withdrawals'}
+                >
+                  Verify Account
+                </Button>
+                <Button
+                  onClick={() => setIsWithdrawDialogOpen(true)}
+                  className={`flex-1 ${!user.ableForPayouts ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
+                  disabled={!user.ableForPayouts}
+                  title={!user.ableForPayouts ? 'Please verify account before withdrawing' : ''}
+                >
+                  Withdraw
+                </Button>
+              </div>
+              <Button onClick={handleTopUp} className="w-full max-w-xs">
+                Top Up ChessCoins
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -133,6 +224,43 @@ export default function AccountPage() {
             </div>
           </CardContent>
         </Card>
+
+        <Dialog open={isWithdrawDialogOpen} onOpenChange={setIsWithdrawDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Withdraw ChessCoins</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Amount to withdraw</label>
+                <Input
+                  type="number"
+                  min="1"
+                  max={user.chessCoin}
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  placeholder={`Max: ${user.chessCoin} ChessCoins`}
+                />
+                <p className="text-sm text-muted-foreground">
+                  Note: 1 ChessCoin = 1 EUR. A commission fee of 1 EUR will be deducted.
+                </p>
+                {withdrawAmount && (
+                  <p className="text-sm">
+                    You will receive: {Math.max(0, parseInt(withdrawAmount) - 1)} EUR
+                  </p>
+                )}
+              </div>
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setIsWithdrawDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleWithdraw}>
+                  Confirm Withdrawal
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

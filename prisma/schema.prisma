@@ -14,15 +14,30 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String?
-  chessCoin Int      @default(20)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  gamesCreated Game[] @relation("GameCreator")
-  gamesJoined  Game[] @relation("GamePlayer")
+  id              String    @id @default(uuid())
+  email           String    @unique
+  password        String
+  name            String?
+  chessCoin       Int       @default(0)
+  stripeConnectId String?   @unique // Stripe Connect account ID
+  ableForPayouts  Boolean   @default(false)
+  payouts         Payout[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  gamesCreated    Game[]    @relation("GameCreator")
+  gamesJoined     Game[]    @relation("GamePlayer")
+}
+
+model Payout {
+  id             String   @id @default(cuid())
+  user           User     @relation(fields: [userId], references: [id])
+  userId         String
+  amount         Int      // In cents (e.g., 1000 = €10.00)
+  currency       String   @default("eur")
+  status         String   // created, paid, failed, canceled
+  stripePayoutId String   // Stripe payout ID (e.g., "po_123")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 }
 
 model Game {
