@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     if (!user.ableForPayouts) {
       return NextResponse.json(
-        { error: 'Account not verified for payouts' },
+        { error: 'Account not verified for payouts. Please complete KYC verification first.' },
         { status: 400 }
       );
     }
@@ -86,4 +86,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

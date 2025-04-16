@@ -46,9 +46,24 @@ export async function POST(request: Request) {
       const account = await stripe.accounts.create({
         type: 'express',
         email: user.email,
+        business_type: 'individual',
+        business_profile: {
+          url: 'https://chessbet.co'
+        },
         capabilities: {
           transfers: { requested: true },
           card_payments: { requested: true },
+        },
+        settings: {
+          payouts: {
+            schedule: {
+              interval: 'manual'
+            }
+          }
+        },
+        // Request identity verification immediately
+        tos_acceptance: {
+          service_agreement: 'full',
         },
       });
 
@@ -62,12 +77,13 @@ export async function POST(request: Request) {
       });
     }
 
-    // Create account link for verification
+    // Create account link for verification with prefilled data
     const accountLink = await stripe.accountLinks.create({
       account: accountId,
       refresh_url: `${request.headers.get('origin')}/account?verify=failed`,
       return_url: `${request.headers.get('origin')}/account?verify=success`,
       type: 'account_onboarding',
+      collect: 'eventually_due',  // Ensure all required verification is collected
     });
 
     return NextResponse.json({ url: accountLink.url });
@@ -78,4 +94,4 @@ export async function POST(request: Request) {
       { status: 500 }
     );
   }
-} 
+}

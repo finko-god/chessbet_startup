@@ -65,6 +65,7 @@ export async function POST(request: Request) {
     }
   }
 
+  // Handle account verification status updates
   if (event.type === 'account.updated') {
     const account = event.data.object as Stripe.Account;
     const user = await prisma.user.findFirst({
@@ -72,16 +73,48 @@ export async function POST(request: Request) {
     });
 
     if (user) {
-      // Check if the account is fully verified and has all required capabilities
-      const isVerified = account.charges_enabled && account.payouts_enabled;
+      // Check if the account is fully verified with completed KYC
+      const kycVerified = 
+        account.charges_enabled && 
+        account.payouts_enabled && 
+        account.capabilities?.transfers === 'active' &&
+        account.requirements?.eventually_due?.length === 0;
       
       await prisma.user.update({
         where: { id: user.id },
         data: { 
-          ableForPayouts: isVerified,
+          ableForPayouts: kycVerified,
           stripeConnectId: account.id
         }
       });
+      
+      console.log(`User ${user.id} KYC verification status updated: ${kycVerified}`);
+    }
+  }
+
+  // Handle person verification events (part of KYC)
+  if (event.type === 'person.updated') {
+    const person = event.data.object as any; // Using any as Person type might not be fully defined
+    const account = person.account;
+    
+    const user = await prisma.user.findFirst({
+      where: { stripeConnectId: account }
+    });
+
+    if (user) {
+      // Fetch the account to check overall verification status
+      const accountDetails = await stripe.accounts.retrieve(account);
+      const kycVerified = 
+        accountDetails.charges_enabled && 
+        accountDetails.payouts_enabled &&
+        accountDetails.requirements?.eventually_due?.length === 0;
+      
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { ableForPayouts: kycVerified }
+      });
+      
+      console.log(`User ${user.id} person verification updated, KYC status: ${kycVerified}`);
     }
   }
 
@@ -119,7 +152,6 @@ export async function POST(request: Request) {
           where: { id: payoutRecord.id },
           data: { status: 'paid' }
         }),
-        // Add any other related updates here if needed
       ]);
     }
   }

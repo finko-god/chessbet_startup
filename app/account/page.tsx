@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import ChessCoinBalance from '@/components/ChessCoinBalance';
 
 interface User {
@@ -22,7 +23,11 @@ export default function AccountPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
+  const [verificationMessage, setVerificationMessage] = useState<string | null>(null);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  const verifyStatus = searchParams.get('verify');
 
   const fetchUserData = async () => {
     try {
@@ -47,6 +52,17 @@ export default function AccountPage() {
   useEffect(() => {
     fetchUserData();
   }, [router]);
+
+  useEffect(() => {
+    if (verifyStatus === 'success') {
+      setVerificationMessage('Account verification initiated. Please complete any remaining verification steps to enable withdrawals.');
+      setTimeout(() => {
+        fetchUserData();
+      }, 2000);
+    } else if (verifyStatus === 'failed') {
+      setVerificationMessage('Account verification process was interrupted. Please try again.');
+    }
+  }, [verifyStatus]);
 
   const handleSignOut = async () => {
     try {
@@ -122,6 +138,7 @@ export default function AccountPage() {
       } else {
         const error = await response.json();
         console.error('Withdrawal failed:', error);
+        alert(`Withdrawal failed: ${error.error || 'Please try again later'}`);
       }
     } catch (error) {
       console.error('Error processing withdrawal:', error);
@@ -152,6 +169,13 @@ export default function AccountPage() {
   return (
     <div className="container mx-auto p-4">
       <div className="max-w-2xl mx-auto space-y-6">
+        {verificationMessage && (
+          <Alert className={verifyStatus === 'success' ? 'bg-green-50 border-green-400' : 'bg-amber-50 border-amber-400'}>
+            <AlertTitle>{verifyStatus === 'success' ? 'Verification In Progress' : 'Verification Interrupted'}</AlertTitle>
+            <AlertDescription>{verificationMessage}</AlertDescription>
+          </Alert>
+        )}
+
         <Card className="bg-card">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-foreground">Account Information</CardTitle>
@@ -177,6 +201,27 @@ export default function AccountPage() {
           <CardContent>
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
               <ChessCoinBalance />
+              
+              {!user.ableForPayouts && !user.stripeConnectId && (
+                <Alert className="bg-blue-50 border-blue-400 mb-4">
+                  <AlertTitle>Verify Your Account</AlertTitle>
+                  <AlertDescription>
+                    To withdraw your ChessCoins, you need to verify your identity. This is a secure process handled by Stripe.
+                    We've simplified verification by pre-filling your email and business information for your convenience.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              {user.stripeConnectId && !user.ableForPayouts && (
+                <Alert className="bg-red-50 border-red-400 text-red-800 mb-4">
+                  <AlertTitle>KYC Verification Required</AlertTitle>
+                  <AlertDescription>
+                    You must complete KYC verification to enable withdrawals. Please verify your identity to access your funds.
+                    Click "Verify Account" to complete the process.
+                  </AlertDescription>
+                </Alert>
+              )}
+              
               <div className="flex space-x-4 w-full max-w-xs">
                 <Button
                   onClick={handleVerifyAccount}
@@ -264,4 +309,4 @@ export default function AccountPage() {
       </div>
     </div>
   );
-} 
+}
