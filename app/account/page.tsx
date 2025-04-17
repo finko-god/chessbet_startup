@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import ChessCoinBalance from '@/components/ChessCoinBalance';
 import { Alert, AlertDescription} from '@/components/ui/alert';
 
@@ -21,8 +22,10 @@ interface User {
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [isWithdrawDialogOpen, setIsWithdrawDialogOpen] = useState(false);
+  const [transferAmount, setTransferAmount] = useState('');
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [transferError, setTransferError] = useState('');
   const router = useRouter();
 
   const fetchUserData = async () => {
@@ -101,31 +104,50 @@ export default function AccountPage() {
     }
   };
 
-  const handleWithdraw = async () => {
-    try {
-      const amount = parseInt(withdrawAmount);
-      if (isNaN(amount) || amount <= 0) {
-        return;
-      }
+  const handleTransfer = async () => {
+    if (!transferAmount || parseInt(transferAmount) <= 0) {
+      setTransferError('Please enter a valid amount');
+      return;
+    }
 
-      const response = await fetch('/api/stripe/create-payout', {
+    setIsTransferring(true);
+    setTransferError('');
+
+    try {
+      const response = await fetch('/api/stripe/transfer', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount: parseInt(transferAmount) }),
       });
 
-      if (response.ok) {
-        setIsWithdrawDialogOpen(false);
-        // Refresh user data to update balance
-        await fetchUserData();
-      } else {
-        const error = await response.json();
-        console.error('Withdrawal failed:', error);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to transfer funds');
       }
+
+      setIsTransferDialogOpen(false);
+      setTransferAmount('');
+      await fetchUserData();
     } catch (error) {
-      console.error('Error processing withdrawal:', error);
+      setTransferError(error instanceof Error ? error.message : 'Failed to transfer funds');
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  const handleManagePayouts = async () => {
+    try {
+      const response = await fetch('/api/stripe/create-login-link', {
+        method: 'POST',
+      });
+      
+      const { url } = await response.json();
+      window.location.href = url;
+    } catch (error) {
+      console.error('Error accessing payouts:', error);
     }
   };
 
@@ -173,46 +195,84 @@ export default function AccountPage() {
 
         <Card className="bg-card">
           <CardHeader>
+            <CardTitle className="text-2xl font-bold text-foreground">Withdrawal Guide</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1">
+                <AccordionTrigger>How to Withdraw Your Winnings</AccordionTrigger>
+                <AccordionContent>
+                  <div className="space-y-4">
+                    <h3 className="font-semibold">Step 1: Connect Your Stripe Account</h3>
+                    <p>Click the "Connect Account" button to link your Stripe account. This is a one-time setup process.</p>
+                    
+                    <h3 className="font-semibold">Step 2: Transfer Funds to Stripe</h3>
+                    <p>Use the "Transfer to Stripe" button to move your ChessCoins to your Stripe account. A 1 EUR commission fee will be deducted from your transfer amount.</p>
+                    
+                    <h3 className="font-semibold">Step 3: Manage Your Payouts</h3>
+                    <p>Click "Manage Payouts" to access your Stripe dashboard where you can:</p>
+                    <ul className="list-disc pl-6 space-y-2">
+                      <li>Set up your bank account for withdrawals</li>
+                      <li>Choose between instant payouts (if eligible) or standard payouts</li>
+                      <li>View your transfer history</li>
+                      <li>Manage your payout schedule</li>
+                    </ul>
+                    
+                    <h3 className="font-semibold">Important Notes:</h3>
+                    <ul className="list-disc pl-6 space-y-2">
+                      <li>1 ChessCoin = 1 EUR</li>
+                      <li>A 1 EUR commission fee is deducted at transfer time</li>
+                      <li>Stripe may charge additional fees for payouts</li>
+                      <li>Verification may be required for security purposes</li>
+                    </ul>
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card">
+          <CardHeader>
             <CardTitle className="text-2xl font-bold text-foreground">ChessCoins Balance</CardTitle>
           </CardHeader>
           <CardContent>
-                        
-                <Alert className="text-white border-blue-400 mb-4">
-                  <AlertDescription>
-                    To withdraw your ChessCoins, you need to verify your identity. This is a secure process handled by Stripe.
-                    We&apos;ve simplified verification by pre-filling your email and business information for your convenience.
-                  </AlertDescription>
-                </Alert>
-
-              
-
-
-              
-
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
               <ChessCoinBalance />
               <div className="flex space-x-4 w-full max-w-xs">
                 <Button
                   onClick={handleVerifyAccount}
-                  className={`flex-1 ${user.ableForPayouts ? 'bg-gray-400 cursor-not-allowed' : ''}`}
-                  disabled={user.ableForPayouts}
-                  title={`${user.ableForPayouts ? "Account already verified" : "Verify account for withdrawals"}`}
+                  className={`flex-1 ${user.stripeConnectId ? 'bg-gray-400 cursor-not-allowed' : ''}`}
+                  disabled={!!user.stripeConnectId}
+                  title={`${user.stripeConnectId ? "Account already connected" : "Connect Stripe account"}`}
                 >
-                  Verify Account
+                  Connect Account
                 </Button>
                 <Button
-                  onClick={() => setIsWithdrawDialogOpen(true)}
-                  className="flex-1 bg-red-500 hover:bg-red-600"
+                  onClick={() => setIsTransferDialogOpen(true)}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600"
+                  disabled={!user.stripeConnectId}
+                  title={!user.stripeConnectId ? "Please connect Stripe account first" : ""}
                 >
-                  Withdraw
+                  Transfer to Stripe
                 </Button>
               </div>
+              {user.stripeConnectId && (
+                <Button
+                  onClick={handleManagePayouts}
+                  className="w-full max-w-xs bg-green-500 hover:bg-green-600"
+                >
+                  Manage Payouts
+                </Button>
+              )}
               <Button onClick={handleTopUp} className="w-full max-w-xs">
                 Top Up ChessCoins
               </Button>
             </div>
           </CardContent>
         </Card>
+
+
 
         <Card className="bg-card">
           <CardHeader>
@@ -237,37 +297,43 @@ export default function AccountPage() {
           </CardContent>
         </Card>
 
-        <Dialog open={isWithdrawDialogOpen} onOpenChange={setIsWithdrawDialogOpen}>
+        <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Withdraw ChessCoins</DialogTitle>
+              <DialogTitle>Transfer to Stripe Account</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Amount to withdraw</label>
+                <label className="text-sm font-medium">Amount to transfer</label>
                 <Input
                   type="number"
                   min="1"
                   max={user.chessCoin}
-                  value={withdrawAmount}
-                  onChange={(e) => setWithdrawAmount(e.target.value)}
+                  value={transferAmount}
+                  onChange={(e) => setTransferAmount(e.target.value)}
                   placeholder={`Max: ${user.chessCoin} ChessCoins`}
                 />
                 <p className="text-sm text-muted-foreground">
                   Note: 1 ChessCoin = 1 EUR. A commission fee of 1 EUR will be deducted.
                 </p>
-                {withdrawAmount && (
+                {transferAmount && (
                   <p className="text-sm">
-                    You will receive: {Math.max(0, parseInt(withdrawAmount) - 1)} EUR
+                    You will receive: {Math.max(0, parseInt(transferAmount) - 1)} EUR in your Stripe account
                   </p>
                 )}
               </div>
+              {transferError && (
+                <p className="text-sm text-red-500">{transferError}</p>
+              )}
               <div className="flex justify-end space-x-2">
-                <Button variant="outline" onClick={() => setIsWithdrawDialogOpen(false)}>
+                <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button onClick={handleWithdraw}>
-                  Confirm Withdrawal
+                <Button 
+                  onClick={handleTransfer}
+                  disabled={isTransferring}
+                >
+                  {isTransferring ? 'Processing...' : 'Confirm Transfer'}
                 </Button>
               </div>
             </div>

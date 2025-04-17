@@ -21,11 +21,12 @@ model User {
   chessCoin       Int       @default(0)
   stripeConnectId String?   @unique // Stripe Connect account ID
   ableForPayouts  Boolean   @default(false)
-  payouts         Payout[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   gamesCreated    Game[]    @relation("GameCreator")
   gamesJoined     Game[]    @relation("GamePlayer")
+  transfers       Transfer[]
+  payouts         Payout[]
 }
 
 model Payout {
@@ -59,4 +60,16 @@ model Game {
   betProcessed Boolean  @default(false) // Track if bets have been processed
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+model Transfer {
+  id              String   @id @default(cuid())
+  userId          String
+  amount          Int      // Amount in cents
+  currency        String
+  status          String   // completed, failed, pending
+  stripeTransferId String  @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id])
 }
