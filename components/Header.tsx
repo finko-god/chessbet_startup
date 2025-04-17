@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
-import ChessCoinBalance from '@/components/ChessCoinBalance';
+// import ChessCoinBalance from '@/components/ChessCoinBalance';
 import { Crown } from 'lucide-react';
 
 interface User {
