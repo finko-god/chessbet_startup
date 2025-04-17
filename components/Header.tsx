@@ -16,7 +16,7 @@ interface User {
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [, setIsLoading] = useState(true);
   const pathname = usePathname();
   const router = useRouter();
 
