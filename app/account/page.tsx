@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import ChessCoinBalance from '@/components/ChessCoinBalance';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription} from '@/components/ui/alert';
 
 interface User {
   id: string;
@@ -180,7 +180,7 @@ export default function AccountPage() {
                 <Alert className="text-white border-blue-400 mb-4">
                   <AlertDescription>
                     To withdraw your ChessCoins, you need to verify your identity. This is a secure process handled by Stripe.
-                    We've simplified verification by pre-filling your email and business information for your convenience.
+                    We&apos;ve simplified verification by pre-filling your email and business information for your convenience.
                   </AlertDescription>
                 </Alert>
 
