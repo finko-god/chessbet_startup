@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   }
 
   // Handle account verification status updates
-  if (event.type === 'account.updated') {
+  if (event.type === 'account.updated' || event.type === 'account.application.authorized') {
     const account = event.data.object as Stripe.Account;
     const user = await prisma.user.findFirst({
       where: { stripeConnectId: account.id }
@@ -78,17 +78,27 @@ export async function POST(request: Request) {
         account.charges_enabled && 
         account.payouts_enabled && 
         account.capabilities?.transfers === 'active' &&
-        account.requirements?.eventually_due?.length === 0;
+        account.requirements?.eventually_due?.length === 0 &&
+        account.requirements?.currently_due?.length === 0 &&
+        account.requirements?.past_due?.length === 0;
       
+      // Update stripeConnectId but don't use kycVerified to block functionality
       await prisma.user.update({
         where: { id: user.id },
         data: { 
-          ableForPayouts: kycVerified,
           stripeConnectId: account.id
         }
       });
       
-      console.log(`User ${user.id} KYC verification status updated: ${kycVerified}`);
+      console.log(`User ${user.id} KYC verification status: ${kycVerified}`);
+      console.log('Account details:', {
+        charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled,
+        transfers_capability: account.capabilities?.transfers,
+        eventually_due: account.requirements?.eventually_due,
+        currently_due: account.requirements?.currently_due,
+        past_due: account.requirements?.past_due
+      });
     }
   }
 
@@ -107,14 +117,18 @@ export async function POST(request: Request) {
       const kycVerified = 
         accountDetails.charges_enabled && 
         accountDetails.payouts_enabled &&
-        accountDetails.requirements?.eventually_due?.length === 0;
-      
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { ableForPayouts: kycVerified }
-      });
+        accountDetails.requirements?.eventually_due?.length === 0 &&
+        accountDetails.requirements?.currently_due?.length === 0 &&
+        accountDetails.requirements?.past_due?.length === 0;
       
       console.log(`User ${user.id} person verification updated, KYC status: ${kycVerified}`);
+      console.log('Account details:', {
+        charges_enabled: accountDetails.charges_enabled,
+        payouts_enabled: accountDetails.payouts_enabled,
+        eventually_due: accountDetails.requirements?.eventually_due,
+        currently_due: accountDetails.requirements?.currently_due,
+        past_due: accountDetails.requirements?.past_due
+      });
     }
   }
 
