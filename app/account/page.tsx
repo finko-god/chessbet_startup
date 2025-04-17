@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import ChessCoinBalance from '@/components/ChessCoinBalance';
-import { Alert, AlertDescription} from '@/components/ui/alert';
+// import { Alert, AlertDescription} from '@/components/ui/alert';
 
 interface User {
   id: string;
@@ -204,13 +204,13 @@ export default function AccountPage() {
                 <AccordionContent>
                   <div className="space-y-4">
                     <h3 className="font-semibold">Step 1: Connect Your Stripe Account</h3>
-                    <p>Click the "Connect Account" button to link your Stripe account. This is a one-time setup process.</p>
+                    <p>Click the &quot;Connect Account&quot; button to link your Stripe account. This is a one-time setup process.</p>
                     
                     <h3 className="font-semibold">Step 2: Transfer Funds to Stripe</h3>
-                    <p>Use the "Transfer to Stripe" button to move your ChessCoins to your Stripe account. A 1 EUR commission fee will be deducted from your transfer amount.</p>
+                    <p>Use the &quot;Transfer to Stripe&quot; button to move your ChessCoins to your Stripe account. A 1 EUR commission fee will be deducted from your transfer amount.</p>
                     
                     <h3 className="font-semibold">Step 3: Manage Your Payouts</h3>
-                    <p>Click "Manage Payouts" to access your Stripe dashboard where you can:</p>
+                    <p>Click &quot;Manage Payouts&quot; to access your Stripe dashboard where you can:</p>
                     <ul className="list-disc pl-6 space-y-2">
                       <li>Set up your bank account for withdrawals</li>
                       <li>Choose between instant payouts (if eligible) or standard payouts</li>
