@@ -38,13 +38,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    if (!user.ableForPayouts) {
-      return NextResponse.json(
-        { error: 'Account not verified for payouts. Please complete KYC verification first.' },
-        { status: 400 }
-      );
-    }
-
     if (amount > user.chessCoin) {
       return NextResponse.json(
         { error: 'Insufficient balance' },
@@ -55,30 +48,47 @@ export async function POST(request: Request) {
     // Calculate amount after commission (1 EUR)
     const amountAfterCommission = (amount - 1) * 100; // Convert to cents
 
-    const payout = await stripe.payouts.create({
-      amount: amountAfterCommission,
-      currency: 'eur',
-      destination: user.stripeConnectId!,
-    });
+    try {
+      const payout = await stripe.payouts.create({
+        amount: amountAfterCommission,
+        currency: 'eur',
+      }, {
+        stripeAccount: user.stripeConnectId!,
+      });
 
-    // Create payout record and update balance
-    await prisma.$transaction([
-      prisma.payout.create({
-        data: {
-          userId: user.id,
-          amount: amountAfterCommission,
-          currency: 'eur',
-          status: 'created',
-          stripePayoutId: payout.id,
-        },
-      }),
-      prisma.user.update({
-        where: { id: user.id },
-        data: { chessCoin: { decrement: amount } },
-      }),
-    ]);
+      // Create payout record and update balance
+      await prisma.$transaction([
+        prisma.payout.create({
+          data: {
+            userId: user.id,
+            amount: amountAfterCommission,
+            currency: 'eur',
+            status: 'created',
+            stripePayoutId: payout.id,
+          },
+        }),
+        prisma.user.update({
+          where: { id: user.id },
+          data: { chessCoin: { decrement: amount } },
+        }),
+      ]);
 
-    return NextResponse.json({ success: true });
+      return NextResponse.json({ success: true });
+    } catch (error) {
+      console.error('Error creating payout:', error);
+      // If the error is due to account not being verified, return a specific message
+      if (error instanceof Stripe.errors.StripeError && 
+          error.code === 'account_invalid') {
+        return NextResponse.json(
+          { error: 'Your account needs additional verification. Please complete the verification process.' },
+          { status: 400 }
+        );
+      }
+      return NextResponse.json(
+        { error: 'Error creating payout' },
+        { status: 500 }
+      );
+    }
   } catch (error) {
     console.error('Error creating payout:', error);
     return NextResponse.json(

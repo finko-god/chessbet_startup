@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import ChessCoinBalance from '@/components/ChessCoinBalance';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface User {
   id: string;
@@ -175,6 +176,19 @@ export default function AccountPage() {
             <CardTitle className="text-2xl font-bold text-foreground">ChessCoins Balance</CardTitle>
           </CardHeader>
           <CardContent>
+                        
+                <Alert className="text-white border-blue-400 mb-4">
+                  <AlertDescription>
+                    To withdraw your ChessCoins, you need to verify your identity. This is a secure process handled by Stripe.
+                    We've simplified verification by pre-filling your email and business information for your convenience.
+                  </AlertDescription>
+                </Alert>
+
+              
+
+
+              
+
             <div className="flex flex-col items-center justify-center py-8 space-y-4">
               <ChessCoinBalance />
               <div className="flex space-x-4 w-full max-w-xs">
@@ -188,9 +202,7 @@ export default function AccountPage() {
                 </Button>
                 <Button
                   onClick={() => setIsWithdrawDialogOpen(true)}
-                  className={`flex-1 ${!user.ableForPayouts ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
-                  disabled={!user.ableForPayouts}
-                  title={`${!user.ableForPayouts ? "Please verify account before withdrawing" : ""}`}
+                  className="flex-1 bg-red-500 hover:bg-red-600"
                 >
                   Withdraw
                 </Button>
