@@ -17,9 +17,9 @@ export async function POST(
       ?.split('=')[1];
     
     if (!token) {
-      console.log('Unauthorized - No token');
+      console.log('Unauthorized - No token for game abandonment');
       return NextResponse.json(
-        { error: 'You must be logged in to finish a game' },
+        { error: 'You must be logged in to abandon a game' },
         { status: 401 }
       );
     }
@@ -29,24 +29,19 @@ export async function POST(
       const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
       
       if (!decoded.id) {
-        console.log('Unauthorized - Invalid token');
+        console.log('Unauthorized - Invalid token format for game abandonment');
         return NextResponse.json(
           { error: 'Invalid authentication' },
           { status: 401 }
         );
       }
+      
+      const userId = decoded.id;
+      const { id: gameId } = await params;
 
-      const { id } = await params;
-
-      // Find the game
+      // Get the game to ensure it exists and user is a participant
       const game = await prisma.game.findUnique({
-        where: {
-          id,
-        },
-        include: {
-          player1: true,
-          player2: true,
-        },
+        where: { id: gameId },
       });
 
       if (!game) {
@@ -56,39 +51,74 @@ export async function POST(
         );
       }
 
-      // Only players can finish the game
-      if (game.player1Id !== decoded.id && game.player2Id !== decoded.id) {
+      // Check if game is already finished
+      if (game.status === 'finished') {
         return NextResponse.json(
-          { error: 'Only players can finish the game' },
-          { status: 403 }
-        );
-      }
-
-      // Only started games can be finished
-      if (game.status !== 'started') {
-        return NextResponse.json(
-          { error: 'Only started games can be finished' },
+          { error: 'Game is already finished' },
           { status: 400 }
         );
       }
 
-      // Update the game status to finished
-      const updatedGame = await prisma.game.update({
-        where: {
-          id,
-        },
-        data: {
-          status: 'finished',
-          winner: decoded.id,
-        },
-        include: {
-          player1: true,
-          player2: true,
-        },
+      // Verify user is a participant
+      if (game.player1Id !== userId && game.player2Id !== userId) {
+        return NextResponse.json(
+          { error: 'You are not a participant in this game' },
+          { status: 403 }
+        );
+      }
+
+      // Determine the winner (the other player)
+      const winnerId = game.player1Id === userId ? game.player2Id : game.player1Id;
+
+      // Update game status and process ChessCoins in a transaction
+      const updatedGame = await prisma.$transaction(async (tx) => {
+        // First, check if game is already finished and bets processed
+        const currentGame = await tx.game.findUnique({
+          where: { id: gameId },
+          select: { 
+            status: true, 
+            betProcessed: true,
+            betAmount: true,
+            player1Id: true,
+            player2Id: true,
+            winner: true
+          }
+        });
+
+        if (!currentGame) {
+          throw new Error('Game not found');
+        }
+
+        if (currentGame.status === 'finished' && currentGame.betProcessed) {
+          throw new Error('Game is already finished and bets processed');
+        }
+
+        // Update game status first
+        const game = await tx.game.update({
+          where: { id: gameId },
+          data: {
+            status: 'finished',
+            winner: winnerId,
+            betProcessed: true,
+          },
+        });
+
+        // Process ChessCoins if not processed yet
+        if (!currentGame.betProcessed && winnerId) {
+          // Winner gets double the bet amount (their bet + loser's bet)
+          await tx.user.update({
+            where: { id: winnerId },
+            data: { 
+              chessCoin: { increment: currentGame.betAmount * 2 }
+            }
+          });
+        }
+
+        return game;
       });
 
       return NextResponse.json({
-        message: 'Game finished successfully',
+        message: 'Game abandoned successfully',
         game: updatedGame,
       });
     } catch (jwtError) {
@@ -99,9 +129,9 @@ export async function POST(
       );
     }
   } catch (error) {
-    console.error('Error finishing game:', error);
+    console.error('Error abandoning game:', error);
     return NextResponse.json(
-      { error: 'Failed to finish game' },
+      { error: 'Failed to abandon game' },
       { status: 500 }
     );
   }

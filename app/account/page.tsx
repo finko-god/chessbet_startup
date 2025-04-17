@@ -203,17 +203,33 @@ export default function AccountPage() {
                 <AccordionTrigger>How to Withdraw Your Winnings</AccordionTrigger>
                 <AccordionContent>
                   <div className="space-y-4">
+                    <p className="font-medium text-amber-600">All verification steps are required for legal compliance and the safety of all users. This process helps prevent fraud and ensures secure transactions.</p>
+                    
                     <h3 className="font-semibold">Step 1: Connect Your Stripe Account</h3>
-                    <p>Click the &quot;Connect Account&quot; button to link your Stripe account. This is a one-time setup process.</p>
+                    <p>Click the &quot;Connect Account&quot; button to link your Stripe account. During registration:</p>
+                    <ul className="list-disc pl-6 space-y-2">
+                      <li>Your email will be pre-filled, if not it must match your ChessBet account email</li>
+                      <li>The type of industry should be prefiled, if not you can choose industry you want because it do not make any difference</li>
+                      <li>Other fields will be pre-filled where possible</li>
+                      <li>You will have to verify your account by uploading an ID document</li>
+                      <li>This is a one-time setup process</li>
+
+                    </ul>
                     
                     <h3 className="font-semibold">Step 2: Transfer Funds to Stripe</h3>
-                    <p>Use the &quot;Transfer to Stripe&quot; button to move your ChessCoins to your Stripe account. A 1 EUR commission fee will be deducted from your transfer amount.</p>
+                    <p>Use the &quot;Transfer to Stripe&quot; button to move your ChessCoins to your Stripe account:</p>
+                    <ul className="list-disc pl-6 space-y-2">
+                      <li>Transfers are processed immediately in 99% of cases</li>
+                      <li>A 1 EUR commission fee will be deducted from your transfer amount</li>
+                      <li>You can transfer any amount from your ChessCoin balance</li>
+                    </ul>
                     
                     <h3 className="font-semibold">Step 3: Manage Your Payouts</h3>
                     <p>Click &quot;Manage Payouts&quot; to access your Stripe dashboard where you can:</p>
                     <ul className="list-disc pl-6 space-y-2">
                       <li>Set up your bank account for withdrawals</li>
                       <li>Choose between instant payouts (if eligible) or standard payouts</li>
+                      <li>Create a payout</li>
                       <li>View your transfer history</li>
                       <li>Manage your payout schedule</li>
                     </ul>
@@ -242,11 +258,10 @@ export default function AccountPage() {
               <div className="flex space-x-4 w-full max-w-xs">
                 <Button
                   onClick={handleVerifyAccount}
-                  className={`flex-1 ${user.stripeConnectId ? 'bg-gray-400 cursor-not-allowed' : ''}`}
-                  disabled={!!user.stripeConnectId}
-                  title={`${user.stripeConnectId ? "Account already connected" : "Connect Stripe account"}`}
+                  className="flex-1"
+                  title={user.stripeConnectId ? "View Stripe Connect account" : "Connect Stripe account"}
                 >
-                  Connect Account
+                  {user.stripeConnectId ? "My Account" : "Connect Account"}
                 </Button>
                 <Button
                   onClick={() => setIsTransferDialogOpen(true)}
@@ -260,7 +275,7 @@ export default function AccountPage() {
               {user.stripeConnectId && (
                 <Button
                   onClick={handleManagePayouts}
-                  className="w-full max-w-xs bg-green-500 hover:bg-green-600"
+                  className="w-full max-w-xs"
                 >
                   Manage Payouts
                 </Button>

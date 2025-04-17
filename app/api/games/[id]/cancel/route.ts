@@ -17,7 +17,7 @@ export async function POST(
       ?.split('=')[1];
     
     if (!token) {
-      console.log('Unauthorized - No token');
+      console.log('Unauthorized - No token for game cancel');
       return NextResponse.json(
         { error: 'You must be logged in to cancel a game' },
         { status: 401 }
@@ -29,24 +29,19 @@ export async function POST(
       const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
       
       if (!decoded.id) {
-        console.log('Unauthorized - Invalid token');
+        console.log('Unauthorized - Invalid token format for game cancel');
         return NextResponse.json(
           { error: 'Invalid authentication' },
           { status: 401 }
         );
       }
+      
+      const userId = decoded.id;
+      const { id: gameId } = await params;
 
-      const { id } = await params;
-
-      // Find the game
+      // Get the game to ensure it exists and user is the creator
       const game = await prisma.game.findUnique({
-        where: {
-          id,
-        },
-        include: {
-          player1: true,
-          player2: true,
-        },
+        where: { id: gameId },
       });
 
       if (!game) {
@@ -56,34 +51,28 @@ export async function POST(
         );
       }
 
-      // Only the creator can cancel the game
-      if (game.player1Id !== decoded.id) {
+      // Check if game is already finished
+      if (game.status === 'finished') {
+        return NextResponse.json(
+          { error: 'Game is already finished' },
+          { status: 400 }
+        );
+      }
+
+      // Verify user is the creator
+      if (game.player1Id !== userId) {
         return NextResponse.json(
           { error: 'Only the game creator can cancel the game' },
           { status: 403 }
         );
       }
 
-      // Only waiting games can be canceled
-      if (game.status !== 'waiting') {
-        return NextResponse.json(
-          { error: 'Only waiting games can be canceled' },
-          { status: 400 }
-        );
-      }
-
-      // Update the game status to finished
+      // Update game status to finished
       const updatedGame = await prisma.game.update({
-        where: {
-          id,
-        },
+        where: { id: gameId },
         data: {
           status: 'finished',
-          winner: null,
-        },
-        include: {
-          player1: true,
-          player2: true,
+          betProcessed: true,
         },
       });
 

@@ -48,7 +48,8 @@ export async function POST(request: Request) {
         email: user.email,
         business_type: 'individual',
         business_profile: {
-          url: 'https://chessbet.co'
+          url: 'https://chessbet.co',
+          mcc: '7999' // This is the Merchant Category Code for "Other Amusement and Recreation Services"
         },
         capabilities: {
           transfers: { requested: true },

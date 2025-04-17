@@ -51,6 +51,7 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   const [gameResult, setGameResult] = useState<{ winner: string | null, reason: string } | null>(null)
   const [redirectedFromJoin, setRedirectedFromJoin] = useState(false)
   const [joiningGame, setJoiningGame] = useState(false)
+  const [isCanceling, setIsCanceling] = useState(false)
 
   // Fetch user data on mount
   useEffect(() => {
@@ -159,21 +160,29 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   const handleFinishGame = async () => {
     setIsFinishing(true)
     try {
-      const response = await fetch(`/api/games/${gameId}/finish`, {
+      // Determine the winner (the other player)
+      const winnerId = game?.player1.id === user?.id ? game?.player2?.id : game?.player1.id
+      
+      const response = await fetch(`/api/games/${gameId}/result`, {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
+        body: JSON.stringify({ 
+          result: 'abandon', 
+          winnerId: winnerId 
+        }),
       })
       if (response.ok) {
-        setFinishMessage('Game finished! Both players will be redirected to the lobby...')
+        setFinishMessage('Game abandoned! Both players will be redirected to the lobby...')
         setTimeout(() => router.push('/'), 2500)
       } else {
         const errorData = await response.json()
-        setError(errorData.error || 'Failed to finish game')
+        setError(errorData.error || 'Failed to abandon game')
         setIsFinishing(false)
       }
     } catch (error) {
-      console.error('Error finishing game:', error)
-      setError('Failed to finish game')
+      console.error('Error abandoning game:', error)
+      setError('Failed to abandon game')
       setIsFinishing(false)
     }
   }
@@ -206,6 +215,28 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
       } catch (error) {
         console.error('Error recording game result:', error)
       }
+    }
+  }
+
+  const handleCancelGame = async () => {
+    setIsCanceling(true)
+    try {
+      const response = await fetch(`/api/games/${gameId}/cancel`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (response.ok) {
+        setFinishMessage('Game canceled. Redirecting to lobby...')
+        setTimeout(() => router.push('/'), 2500)
+      } else {
+        const errorData = await response.json()
+        setError(errorData.error || 'Failed to cancel game')
+        setIsCanceling(false)
+      }
+    } catch (error) {
+      console.error('Error canceling game:', error)
+      setError('Failed to cancel game')
+      setIsCanceling(false)
     }
   }
 
@@ -397,22 +428,23 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
                 </div>
               </CardContent>
             </Card>
-            {game.status === 'waiting' && !game.player2 && (
+
+            {game.status === 'waiting' && game.player1.id === user?.id && (
               <Button
-                onClick={handleJoinGame}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={joiningGame}
+                onClick={handleCancelGame}
+                className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={isCanceling}
               >
-                {joiningGame ? 'Joining...' : 'Join Game'}
+                {isCanceling ? 'Canceling...' : 'Cancel Game'}
               </Button>
             )}
             {game.status === 'started' && (
               <Button
                 onClick={handleFinishGame}
-                className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 disabled={isFinishing}
               >
-                {isFinishing ? 'Finishing...' : 'Finish Game'}
+                {isFinishing ? 'Abandoning...' : 'Abandon Game'}
               </Button>
             )}
           </div>
@@ -521,13 +553,22 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             {joiningGame ? 'Joining...' : 'Join Game'}
           </Button>
         )}
+        {game.status === 'waiting' && game.player1.id === user?.id && (
+          <Button
+            onClick={handleCancelGame}
+            className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            disabled={isCanceling}
+          >
+            {isCanceling ? 'Canceling...' : 'Cancel Game'}
+          </Button>
+        )}
         {game.status === 'started' && (
           <Button
             onClick={handleFinishGame}
-            className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+            className="w-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
             disabled={isFinishing}
           >
-            {isFinishing ? 'Finishing...' : 'Finish Game'}
+            {isFinishing ? 'Abandoning...' : 'Abandon Game'}
           </Button>
         )}
       </div>

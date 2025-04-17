@@ -7,17 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 
 export default function SignUpPage() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+
+    if (!agreedToTerms) {
+      setError('You must agree to the terms and conditions');
+      return;
+    }
 
     try {
       const response = await fetch('/api/auth/signup', {
@@ -87,6 +94,28 @@ export default function SignUpPage() {
                   required
                 />
               </div>
+              
+              <div className="space-y-4">
+                <div className="text-sm text-muted-foreground space-y-2">
+                  <p className="font-medium">Disclaimer:</p>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>You must comply with the gambling laws of your country of residence.</li>
+                    <li>ChessBet is not responsible for any violations of local laws by users.</li>
+                    <li>By creating an account, you pledge to play fairly without using any external assistance or chess engines.</li>
+                  </ol>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    id="terms"
+                    checked={agreedToTerms}
+                    onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
+                  />
+                  <Label htmlFor="terms" className="text-sm text-muted-foreground">
+                    I agree to the terms and conditions
+                  </Label>
+                </div>
+              </div>
+
               {error && <p className="text-red-500 text-sm">{error}</p>}
               <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                 Create Account

@@ -75,6 +75,11 @@ export async function POST(
         )
       }
 
+      // Add delay for creator to ensure they process first
+      if (game.player1Id === userId) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
       // Update game with result and winner
       const updatedGame = await prisma.$transaction(async (tx) => {
         // First, check again if game is finished (to prevent race conditions)
