@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 // import ChessCoinBalance from '@/components/ChessCoinBalance';
@@ -16,9 +16,8 @@ interface User {
 
 export default function Header() {
   const [user, setUser] = useState<User | null>(null);
-  const [, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
-  const router = useRouter();
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -76,26 +75,43 @@ export default function Header() {
             </nav>
           </div>
           
-          <div className="flex items-center gap-4">
-            {user && (
+          <div className="flex items-center space-x-4">
+            {isLoading ? (
+              <div className="text-muted-foreground">Loading...</div>
+            ) : user ? (
+              <>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1 bg-primary/10 px-3 py-1 rounded-full">
                   <span className="text-sm font-medium"><Crown className="w-4 h-4" /></span>
                   <span className="text-sm font-bold">{user.chessCoin}</span>
                 </div>
-                <div className="flex items-center gap-1 bg-primary/10 px-3 py-1 rounded-full">
-                  <span className="text-sm font-medium">${user.chessCoin}</span>
-                </div>
+
               </div>
-            )}
-            {user ? (
-              <Button variant="outline" onClick={handleSignOut}>
-                Sign Out
-              </Button>
+                <Link href="/account">
+                  <Button variant="ghost" size="sm" className="hover:text-muted-foreground text-primary">
+                    Account
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSignOut}
+                  className="hover:text-muted-foreground text-primary"
+                >
+                  Sign Out
+                </Button>
+              </>
             ) : (
-              <Button variant="outline" onClick={() => router.push('/signin')}>
-                Sign In
-              </Button>
+              <>
+                <Link href="/signin">
+                  <Button className='px-5 py-2' size="sm"  >
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/signup">
+                  <Button className='px-4' size="sm">Sign Up</Button>
+                </Link>
+              </>
             )}
           </div>
         </div>

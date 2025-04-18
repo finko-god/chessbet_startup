@@ -43,9 +43,9 @@ export default function SignUpPage() {
       }
 
       router.push('/signin');
-    } catch (error) { 
+    } catch (error) {
       console.error('Error signing up:', error)
-      setError('An error occurred. Please try again.' );
+      setError('An error occurred. Please try again.');
     }
   };
 
@@ -94,7 +94,7 @@ export default function SignUpPage() {
                   required
                 />
               </div>
-              
+
               <div className="space-y-4">
                 <div className="text-sm text-muted-foreground space-y-2">
                   <p className="font-medium">Disclaimer:</p>

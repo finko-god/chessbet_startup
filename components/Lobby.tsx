@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CreateGameModal } from './CreateGameModal';
 import { useRouter } from 'next/navigation';
-import { X } from 'lucide-react';
+import { X, RefreshCw, Plus, Crown } from 'lucide-react';
 
 interface Game {
   id: string;
@@ -201,22 +201,24 @@ export function Lobby() {
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h2 className="text-2xl font-semibold">Loading Games</h2>
+      <div className="space-y-8">
+        <div className="flex justify-center items-center">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+            Loading Games
+          </h2>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
-            <Card key={i} className="relative animate-pulse">
+            <Card key={i} className="relative animate-pulse glass-effect">
               <CardHeader>
-                <div className="h-6 bg-gray-200 rounded w-1/2"></div>
+                <div className="h-7 bg-primary/20 rounded-full w-1/2"></div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
-                  <div className="h-4 bg-gray-200 rounded w-1/2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-2/3"></div>
-                  <div className="h-8 bg-gray-200 rounded w-full mt-4"></div>
+                <div className="space-y-4">
+                  <div className="h-5 bg-primary/20 rounded-full w-3/4"></div>
+                  <div className="h-5 bg-primary/20 rounded-full w-1/2"></div>
+                  <div className="h-5 bg-primary/20 rounded-full w-2/3"></div>
+                  <div className="h-10 bg-primary/20 rounded-lg w-full mt-6"></div>
                 </div>
               </CardContent>
             </Card>
@@ -227,49 +229,75 @@ export function Lobby() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <h2 className="text-2xl font-semibold">Available Games</h2>
-        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-          <Button onClick={() => fetchGames()} className="w-full sm:w-auto">Refresh</Button>
-          <Button onClick={() => setIsCreateModalOpen(true)} className="w-full sm:w-auto">Create Game</Button>
+    <div className="space-y-8">
+      <div className="flex flex-col sm:flex-row justify-between items-center sm:items-center gap-6">
+        <div className="text-center sm:text-left">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
+            Available Games
+          </h2>
+          <p className="text-muted-foreground mt-2">Join an existing game or create your own</p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <Button 
+            onClick={() => fetchGames()} 
+            variant="outline"
+            className="gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/20"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Refresh
+          </Button>
+          <Button 
+            onClick={() => setIsCreateModalOpen(true)} 
+            className="gap-2 hover:bg-primary/90"
+          >
+            <Plus className="w-4 h-4" />
+            Create Game
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {games.map((game) => (
-          <Card key={game.id} className="relative">
+          <Card key={game.id} className="relative glass-effect hover:shadow-lg transition-all duration-300">
             {game.player1.id === user?.id && game.status === 'waiting' && (
               <Button 
                 onClick={() => handleCancelGame(game.id)}
                 variant="ghost"
                 size="icon"
-                className="absolute top-4 right-4 h-6 w-6 p-0 text-red-500 hover:text-red-700 hover:bg-red-100"
+                className="absolute top-4 right-4 h-8 w-8 p-0 text-destructive hover:text-destructive/80 hover:bg-destructive/10"
                 aria-label="Cancel Game"
               >
-                <X size={16} />
+                <X size={18} />
               </Button>
             )}
             <CardHeader>
-              <CardTitle>Game #{game.id.slice(0, 6)}</CardTitle>
+              <CardTitle className="text-xl font-semibold">
+                {game.player1.name}&apos;s Game
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p>Creator: {game.player1.name}</p>
-                <p>Bet Amount: ${game.betAmount}</p>
-                <p>Status: {game.status}</p>
-                {game.status === 'waiting' && user?.id && game.player1.id !== user.id && (
-                  <Button 
-                    onClick={() => handleJoinGame(game.id)}
-                    className="w-full"
-                  >
-                    Join Game
-                  </Button>
-                )}
-                {game.player1.id === user?.id && game.status === 'waiting' && (
-                  <p className="text-sm text-muted-foreground">Waiting for opponent...</p>
-                )}
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4 text-primary" />
+                  <span className="text-sm font-medium">Bet Amount</span>
+                </div>
+                <span className="text-lg font-bold text-primary">${game.betAmount}</span>
               </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Status</span>
+                <span className={`text-sm font-medium ${
+                  game.status === 'waiting' ? 'text-primary' : 'text-muted-foreground'
+                }`}>
+                  {game.status === 'waiting' ? 'Waiting for opponent' : 'In progress'}
+                </span>
+              </div>
+              <Button
+                onClick={() => handleJoinGame(game.id)}
+                disabled={game.status !== 'waiting' || game.player1.id === user?.id}
+                className="w-full mt-4 hover:bg-primary/90"
+              >
+                {game.player1.id === user?.id ? 'Your Game' : 'Join Game'}
+              </Button>
             </CardContent>
           </Card>
         ))}

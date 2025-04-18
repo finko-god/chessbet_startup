@@ -26,6 +26,13 @@ export default function RootLayout({
             <main className="flex-1">
               {children}
             </main>
+            <footer className="bg-background border-t border-border">
+              <div className="container mx-auto py-4">
+                <p className="text-sm text-muted-foreground">
+                  &copy; {new Date().getFullYear()} ChessBet. All rights reserved.
+                </p>
+              </div>
+            </footer>
           </div>
         </Providers>
         <Analytics />

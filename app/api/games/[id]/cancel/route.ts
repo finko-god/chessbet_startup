@@ -15,7 +15,7 @@ export async function POST(
     const token = request.headers.get('cookie')?.split(';')
       .find(c => c.trim().startsWith('token='))
       ?.split('=')[1];
-    
+
     if (!token) {
       console.log('Unauthorized - No token for game cancel');
       return NextResponse.json(
@@ -23,11 +23,11 @@ export async function POST(
         { status: 401 }
       );
     }
-    
+
     try {
       // Verify the token
       const decoded = jwt.verify(token, JWT_SECRET) as { id: string };
-      
+
       if (!decoded.id) {
         console.log('Unauthorized - Invalid token format for game cancel');
         return NextResponse.json(
@@ -35,7 +35,7 @@ export async function POST(
           { status: 401 }
         );
       }
-      
+
       const userId = decoded.id;
       const { id: gameId } = await params;
 
