@@ -20,7 +20,6 @@ model User {
   name            String?
   chessCoin       Int       @default(0)
   stripeConnectId String?   @unique // Stripe Connect account ID
-  ableForPayouts  Boolean   @default(false)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   gamesCreated    Game[]    @relation("GameCreator")
@@ -51,6 +50,7 @@ model Game {
   player2     User?    @relation("GamePlayer", fields: [player2Id], references: [id])
   betAmount   Int      // The bet amount for the game
   status      String   // "waiting", "started", "finished"
+  timeControl String   @default("5+0") // Time control in format "minutes+increment"
   fen         String?  // Current board position in FEN notation
   pgn         String?  // Full game history in PGN format
   winner      String?  // ID of the winner (if game is finished)

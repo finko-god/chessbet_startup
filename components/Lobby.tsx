@@ -19,6 +19,7 @@ interface Game {
   };
   betAmount: number;
   status: string;
+  timeControl: string;
 }
 
 interface User {
@@ -119,7 +120,7 @@ export function Lobby() {
     return () => clearInterval(gamesInterval);
   }, []);
 
-  const handleCreateGame = async (betAmount: number) => {
+  const handleCreateGame = async (betAmount: number, timeControl: string) => {
     if (!user) {
       console.error('No user found');
       router.push('/signin');
@@ -133,7 +134,7 @@ export function Lobby() {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify({ betAmount }),
+        body: JSON.stringify({ betAmount, timeControl }),
       });
       
       if (response.ok) {
@@ -281,7 +282,13 @@ export function Lobby() {
                   <Crown className="w-4 h-4 text-primary" />
                   <span className="text-sm font-medium">Bet Amount</span>
                 </div>
-                <span className="text-lg font-bold text-primary">${game.betAmount}</span>
+                <span className="text-lg font-bold text-primary">{game.betAmount}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Time Control</span>
+                <span className="text-sm font-medium">
+                  {game.timeControl === '3+2' ? '3 min + 2 sec' : '5 min'}
+                </span>
               </div>
               <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Status</span>

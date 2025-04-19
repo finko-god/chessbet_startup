@@ -30,8 +30,7 @@ export async function POST(request: Request) {
       where: { id: decoded.id },
       select: { 
         id: true,
-        stripeConnectId: true,
-        ableForPayouts: true
+        stripeConnectId: true
       }
     });
 
@@ -55,14 +54,6 @@ export async function POST(request: Request) {
       account.payouts_enabled && 
       account.capabilities?.transfers === 'active' &&
       account.requirements?.eventually_due?.length === 0;
-
-    // Update user's verification status if changed
-    if (isVerified !== user.ableForPayouts) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { ableForPayouts: isVerified }
-      });
-    }
 
     return NextResponse.json({ 
       verified: isVerified,

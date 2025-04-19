@@ -8,6 +8,11 @@ import { pusherServer } from '@/lib/pusher'
 // Use a consistent secret
 const JWT_SECRET = process.env.JWT_SECRET || 'chessbet_supersecret_jwt_key'
 
+// Time constants
+
+const THREE_MINUTES_MS = 3 * 60 * 1000
+const TWO_SECONDS_MS = 2 * 1000
+
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -92,6 +97,15 @@ export async function POST(
           whiteTime = Math.max(0, whiteTime - timeElapsed)
         } else {
           blackTime = Math.max(0, blackTime - timeElapsed)
+        }
+
+        // Add increment for 3+2 mode
+        if (game.timeControl === '3+2') {
+          if (isWhiteTurn) {
+            whiteTime = Math.min(whiteTime + TWO_SECONDS_MS, THREE_MINUTES_MS)
+          } else {
+            blackTime = Math.min(blackTime + TWO_SECONDS_MS, THREE_MINUTES_MS)
+          }
         }
       }
 

@@ -156,7 +156,13 @@ export default function ChessBoard({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ move, timestamp: Date.now(), isFirstMove }),
+          body: JSON.stringify({ 
+            move, 
+            timestamp: Date.now(), 
+            isFirstMove,
+            whiteTime: game.turn() === 'w' ? 0 : 300000, // Send current time
+            blackTime: game.turn() === 'b' ? 0 : 300000  // Send current time
+          }),
         })
 
         if (!response.ok) {
@@ -164,14 +170,12 @@ export default function ChessBoard({
           throw new Error(errorData.error || 'Failed to update game state')
         }
 
-        // Local state updates removed here since they'll come from Pusher events
-
       } catch (error) {
         console.error('Error updating game state:', error)
         setIllegalMoveError(error instanceof Error ? error.message : 'Invalid move')
       }
     },
-    [gameId]
+    [gameId, game]
   )
 
   useEffect(() => {

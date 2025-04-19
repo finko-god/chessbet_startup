@@ -16,7 +16,6 @@ interface User {
   email: string;
   chessCoin: number;
   stripeConnectId: string | null;
-  ableForPayouts: boolean;
 }
 
 export default function AccountPage() {

@@ -56,17 +56,17 @@ export default function Header() {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <header className="bg-background border-b border-border">
+    <header className="bg-background/80 backdrop-blur-sm border-b border-border sticky top-0 z-50">
       <div className="container mx-auto py-2">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-8">
             <Link href="/" className="flex items-center">
               <span className="text-xl font-bold text-primary">ChessBet</span>
             </Link>
-            <nav className="hidden md:flex space-x-4">
+            <nav className="hidden md:flex space-x-6">
               <Link
                 href="/"
-                className={`text-md font-medium transition-colors hover:text-primary ${
+                className={`text-md font-medium transition-all duration-200 hover:text-primary ${
                   isActive('/') ? 'text-primary' : 'text-muted-foreground'
                 }`}
               >
@@ -77,18 +77,17 @@ export default function Header() {
           
           <div className="flex items-center space-x-4">
             {isLoading ? (
-              <div className="text-muted-foreground">Loading...</div>
+              <div className="h-8 w-20 bg-primary/10 rounded-full animate-pulse"></div>
             ) : user ? (
               <>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 bg-primary/10 px-3 py-1 rounded-full">
-                  <span className="text-sm font-medium"><Crown className="w-4 h-4" /></span>
-                  <span className="text-sm font-bold">{user.chessCoin}</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20 hover:bg-primary/15 transition-colors duration-200">
+                    <Crown className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-semibold text-primary">{user.chessCoin}</span>
+                  </div>
                 </div>
-
-              </div>
                 <Link href="/account">
-                  <Button variant="ghost" size="sm" className="hover:text-muted-foreground text-primary">
+                  <Button variant="ghost" size="sm" className="hover:text-primary hover:bg-primary/10 transition-colors duration-200">
                     Account
                   </Button>
                 </Link>
@@ -96,7 +95,7 @@ export default function Header() {
                   variant="ghost"
                   size="sm"
                   onClick={handleSignOut}
-                  className="hover:text-muted-foreground text-primary"
+                  className="hover:text-destructive hover:bg-destructive/10 transition-colors duration-200"
                 >
                   Sign Out
                 </Button>
@@ -104,12 +103,12 @@ export default function Header() {
             ) : (
               <>
                 <Link href="/signin">
-                  <Button className='px-5 py-2' size="sm"  >
+                  <Button className='px-5 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 transition-colors duration-200' size="sm">
                     Sign In
                   </Button>
                 </Link>
                 <Link href="/signup">
-                  <Button className='px-4' size="sm">Sign Up</Button>
+                  <Button className='px-5 py-2 bg-primary hover:bg-primary/90 text-primary-foreground transition-colors duration-200' size="sm">Sign Up</Button>
                 </Link>
               </>
             )}

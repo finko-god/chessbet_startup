@@ -8,6 +8,8 @@ const JWT_SECRET = process.env.JWT_SECRET || 'chessbet_supersecret_jwt_key';
 
 // 5 minutes in milliseconds
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
+const THREE_MINUTES_MS = 3 * 60 * 1000; // 3 minutes in milliseconds
+
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
         );
       }
       
-      const { betAmount } = await request.json();
+      const { betAmount, timeControl = '5+0' } = await request.json();
 
       if (!betAmount || typeof betAmount !== 'number' || betAmount <= 0) {
         return NextResponse.json(
@@ -78,8 +80,9 @@ export async function POST(request: Request) {
             whitePlayerId: decoded.id,
             betAmount,
             status: 'waiting',
-            player1TimeLeft: FIVE_MINUTES_MS,
-            player2TimeLeft: FIVE_MINUTES_MS,
+            timeControl,
+            player1TimeLeft: timeControl === '3+2' ? THREE_MINUTES_MS : FIVE_MINUTES_MS,
+            player2TimeLeft: timeControl === '3+2' ? THREE_MINUTES_MS : FIVE_MINUTES_MS,
           },
         });
       });

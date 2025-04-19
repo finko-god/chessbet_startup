@@ -43,9 +43,24 @@ export default function ChessClock({
     setBlackTimeLeft(blackTime)
   }, [])
 
+  const handleMoveEvent = useCallback(({ fen, player1TimeLeft, player2TimeLeft }: { 
+    fen: string
+    player1TimeLeft: number
+    player2TimeLeft: number 
+  }) => {
+    // Immediately update the time when a move is made
+    const isWhiteTurn = fen.split(' ')[1] === 'w'
+    if (isWhiteTurn) {
+      setBlackTimeLeft(player2TimeLeft)
+    } else {
+      setWhiteTimeLeft(player1TimeLeft)
+    }
+  }, [])
+
   const eventHandlers = useMemo(() => ({
-    'time-update': handleTimeUpdate
-  }), [handleTimeUpdate])
+    'time-update': handleTimeUpdate,
+    'move-made': handleMoveEvent
+  }), [handleTimeUpdate, handleMoveEvent])
 
   usePusherChannel(channelName, eventHandlers)
   
@@ -105,7 +120,7 @@ export default function ChessClock({
             return newTime;
           });
         }
-      }, 100); // Update more frequently for smoother countdown
+      }, 16); // Update every 16ms (60fps) for smoother countdown
     } else {
       setIsClockRunning(false);
     }
@@ -123,7 +138,7 @@ export default function ChessClock({
     
     const serverUpdateInterval = setInterval(() => {
       updateTimeOnServer(whiteTimeLeft, blackTimeLeft);
-    }, 1000); // Update server once per second
+    }, 500); // Update server twice per second
     
     return () => clearInterval(serverUpdateInterval);
   }, [isGameStarted, isClockRunning, whiteTimeLeft, blackTimeLeft]);
@@ -137,9 +152,9 @@ export default function ChessClock({
 
   // Throttle server updates
   const updateTimeOnServer = useCallback(debounce(async (whiteTime: number, blackTime: number) => {
-    // Only send update if time difference is significant (more than 1 second)
-    const timeDiff = Math.abs(whiteTime - prevWhiteTimeRef.current) > 1000 || 
-                    Math.abs(blackTime - prevBlackTimeRef.current) > 1000
+    // Only send update if time difference is significant (more than 500ms)
+    const timeDiff = Math.abs(whiteTime - prevWhiteTimeRef.current) > 500 || 
+                    Math.abs(blackTime - prevBlackTimeRef.current) > 500
 
     if (timeDiff) {
       try {
@@ -167,7 +182,7 @@ export default function ChessClock({
         console.error('Error updating time on server:', error)
       }
     }
-  }, 2000), [gameId]) // Increased debounce time to 2 seconds
+  }, 1000), [gameId]) // Reduced debounce time to 1 second
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60000);

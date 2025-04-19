@@ -29,8 +29,7 @@ export async function POST(request: Request) {
       select: { 
         id: true,
         chessCoin: true,
-        stripeConnectId: true,
-        ableForPayouts: true
+        stripeConnectId: true
       }
     });
 
