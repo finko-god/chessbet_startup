@@ -24,7 +24,7 @@ export async function GET() {
         data: {
           status: 'finished',
           betProcessed: true,
-          endReason: 'timeout'
+
         }
       })
     }
