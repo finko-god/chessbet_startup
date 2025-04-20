@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { X, Crown } from 'lucide-react';
 // import { ChessboardComponent } from './ChessBoard';
 
+
 interface Game {
   id: string;
   player1: {
