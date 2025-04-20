@@ -24,7 +24,7 @@ export async function GET() {
       const elapsedTime = now.getTime() - new Date(game.lastMoveAt).getTime();
       
       // Extract time control information (e.g., "5+0" or "3+2")
-      const [baseTime, increment] = (game.timeControl || '5+0').split('+').map(Number);
+      const [baseTime] = (game.timeControl || '5+0').split('+').map(Number);
       const baseTimeMs = baseTime * 60 * 1000;
       
       // Determine whose turn it is based on FEN notation
