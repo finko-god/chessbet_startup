@@ -47,24 +47,7 @@ interface GameState {
   player2TimeLeft: number;
 }
 
-export function ChessboardComponent() {
-  const [game] = useState(new Chess())
 
-  return (
-    <div className="w-full max-w-2xl mx-auto">
-      <Chessboard 
-        position={game.fen()}
-        boardWidth={600}
-        customBoardStyle={{
-          borderRadius: '4px',
-          boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)'
-        }}
-        customDarkSquareStyle={{ backgroundColor: '#779556' }}
-        customLightSquareStyle={{ backgroundColor: '#ebecd0' }}
-      />
-    </div>
-  )
-}
 
 export default function ChessBoard({
   gameId,
@@ -187,9 +170,7 @@ export default function ChessBoard({
           body: JSON.stringify({ 
             move, 
             timestamp: Date.now(), 
-            isFirstMove,
-            whiteTime: game.turn() === 'w' ? 0 : 300000, // Send current time
-            blackTime: game.turn() === 'b' ? 0 : 300000  // Send current time
+            isFirstMove
           }),
         })
 
@@ -203,7 +184,7 @@ export default function ChessBoard({
         setIllegalMoveError(error instanceof Error ? error.message : 'Invalid move')
       }
     },
-    [gameId, game]
+    [gameId]
   )
 
   useEffect(() => {

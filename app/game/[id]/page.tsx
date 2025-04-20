@@ -203,35 +203,45 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
 
   const handleTimeEnd = async (gameId: string, winner: 'white' | 'black') => {
     try {
+      console.log('Time ended for game:', gameId, 'Winner:', winner);
+      
       // Create chess instance to check for insufficient material
-      const chessInstance = new Chess(game?.fen ?? undefined)
-      const hasInsufficientMaterial = chessInstance.isInsufficientMaterial()
+      const chessInstance = new Chess(game?.fen ?? undefined);
+      const hasInsufficientMaterial = chessInstance.isInsufficientMaterial();
       
       // If there's insufficient material, it's a draw even if time ran out
       if (hasInsufficientMaterial) {
-        setGameResult({ winner: null, reason: 'insufficient material draw' })
+        console.log('Insufficient material draw despite time loss');
+        setGameResult({ winner: null, reason: 'insufficient material draw' });
         await fetch(`/api/games/${gameId}/result`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify({ result: 'insufficient_material', winnerId: null }),
-        })
+        });
       } else {
         // Normal time loss scenario
-        const winnerId = winner === 'white' ? game?.whitePlayerId : game?.blackPlayerId
+        const winnerId = winner === 'white' ? game?.whitePlayerId : game?.blackPlayerId;
+        console.log('Time loss - Setting winner ID:', winnerId);
+        
         if (winnerId) {
-          setGameResult({ winner: winnerId, reason: 'time' })
-          await fetch(`/api/games/${gameId}/result`, {
+          setGameResult({ winner: winnerId, reason: 'time' });
+          const response = await fetch(`/api/games/${gameId}/result`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({ result: 'time', winnerId: winnerId }),
-          })
+          });
+          
+          const data = await response.json();
+          console.log('Result API response:', data);
+        } else {
+          console.error('Could not determine winner ID');
         }
       }
-      await fetchGame()
+      await fetchGame();
     } catch (error) {
-      console.error('Error recording game result:', error)
+      console.error('Error recording game result:', error);
     }
   }
 
@@ -410,8 +420,8 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
             <ChessClock
               gameId={gameId}
               isWhitePlayer={user?.id === game.whitePlayerId}
-              whiteTime={game.player1TimeLeft || 300000}
-              blackTime={game.player2TimeLeft || 300000}
+              whiteTime={game.player1TimeLeft !== null ? game.player1TimeLeft : 300000}
+              blackTime={game.player2TimeLeft !== null ? game.player2TimeLeft : 300000}
               isWhiteTurn={!game.fen || game.fen.split(' ')[1] === 'w'}
               isGameStarted={game.status === 'started'}
               onTimeEndAction={handleTimeEnd}
@@ -526,8 +536,8 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
         <ChessClock
           gameId={gameId}
           isWhitePlayer={user?.id === game.whitePlayerId}
-          whiteTime={game.player1TimeLeft || 300000}
-          blackTime={game.player2TimeLeft || 300000}
+          whiteTime={game.player1TimeLeft !== null ? game.player1TimeLeft : 300000}
+          blackTime={game.player2TimeLeft !== null ? game.player2TimeLeft : 300000}
           isWhiteTurn={!game.fen || game.fen.split(' ')[1] === 'w'}
           isGameStarted={game.status === 'started'}
           onTimeEndAction={handleTimeEnd}

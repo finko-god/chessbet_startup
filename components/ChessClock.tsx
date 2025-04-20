@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { usePusherChannel } from '@/hooks/usePusherChannel';
 
-import { debounce } from 'lodash';
 
 interface ChessClockProps {
   gameId: string;
@@ -33,16 +32,50 @@ export default function ChessClock({
   const prevWhiteTimeRef = useRef(whiteTime);
   const prevBlackTimeRef = useRef(blackTime);
   const timeEndedRef = useRef(false);
+  const initialLoadDoneRef = useRef(false);
   
+  // Only update state from props on first mount or forced refresh
+  useEffect(() => {
+    if (!initialLoadDoneRef.current) {
+      setWhiteTimeLeft(whiteTime);
+      setBlackTimeLeft(blackTime);
+      prevWhiteTimeRef.current = whiteTime;
+      prevBlackTimeRef.current = blackTime;
+      initialLoadDoneRef.current = true;
+    }
+  }, [whiteTime, blackTime]);
+
   // Pusher integration
   const handleTimeUpdate = useCallback(({ whiteTime, blackTime }: { 
     whiteTime: number
     blackTime: number 
   }) => {
-    console.log('Time update received:', whiteTime, blackTime)
-    setWhiteTimeLeft(whiteTime)
-    setBlackTimeLeft(blackTime)
-  }, [])
+    console.log('Time update received:', whiteTime, blackTime);
+    setWhiteTimeLeft(whiteTime);
+    setBlackTimeLeft(blackTime);
+    // Update local references
+    prevWhiteTimeRef.current = whiteTime;
+    prevBlackTimeRef.current = blackTime;
+  }, []);
+
+  const handleGameEnded = useCallback(({ winner, reason }: { 
+    winner: string
+    reason: string 
+  }) => {
+    console.log('Game ended event received:', { winner, reason });
+    if (reason === 'time') {
+      console.log('Time ran out for player:', winner === 'white' ? 'black' : 'white');
+      const isWhiteWinner = winner === 'white';
+      onTimeEndAction(gameId, isWhiteWinner ? 'white' : 'black');
+      
+      // Stop the clock
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      setIsClockRunning(false);
+    }
+  }, [gameId, onTimeEndAction]);
 
   const handleMoveEvent = useCallback(({ fen, player1TimeLeft, player2TimeLeft }: { 
     fen: string
@@ -50,20 +83,26 @@ export default function ChessClock({
     player2TimeLeft: number 
   }) => {
     // Immediately update the time when a move is made
-    const isWhiteTurn = fen.split(' ')[1] === 'w'
+    const isWhiteTurn = fen.split(' ')[1] === 'w';
     if (isWhiteTurn) {
-      setBlackTimeLeft(player2TimeLeft)
+      setBlackTimeLeft(player2TimeLeft);
+      prevBlackTimeRef.current = player2TimeLeft;
     } else {
-      setWhiteTimeLeft(player1TimeLeft)
+      setWhiteTimeLeft(player1TimeLeft);
+      prevWhiteTimeRef.current = player1TimeLeft;
     }
-  }, [])
+  }, []);
 
-  const eventHandlers = useMemo(() => ({
-    'time-update': handleTimeUpdate,
-    'move-made': handleMoveEvent
-  }), [handleTimeUpdate, handleMoveEvent])
+  const eventHandlers = useMemo(() => {
+    console.log('Setting up event handlers for channel:', channelName);
+    return {
+      'time-update': handleTimeUpdate,
+      'move-made': handleMoveEvent,
+      'game-ended': handleGameEnded
+    };
+  }, [handleTimeUpdate, handleMoveEvent, handleGameEnded, channelName]);
 
-  usePusherChannel(channelName, eventHandlers)
+  usePusherChannel(channelName, eventHandlers);
   
   // Sync local clock with server times when props change
   useEffect(() => {
@@ -106,22 +145,20 @@ export default function ChessClock({
         if (isWhiteTurn) {
           setWhiteTimeLeft(prev => {
             const newTime = Math.max(0, prev - elapsed);
-            if (newTime <= 0 && !timeEndedRef.current) {
+            // Check for timeout
+            if (newTime === 0 && !timeEndedRef.current) {
               timeEndedRef.current = true;
-              clearInterval(intervalRef.current!);
-              onTimeEndAction(gameId, 'black');
-              return 0;
+              onTimeEndAction(gameId, 'black'); // Black wins when white times out
             }
             return newTime;
           });
         } else {
           setBlackTimeLeft(prev => {
             const newTime = Math.max(0, prev - elapsed);
-            if (newTime <= 0 && !timeEndedRef.current) {
+            // Check for timeout
+            if (newTime === 0 && !timeEndedRef.current) {
               timeEndedRef.current = true;
-              clearInterval(intervalRef.current!);
-              onTimeEndAction(gameId, 'white');
-              return 0;
+              onTimeEndAction(gameId, 'white'); // White wins when black times out
             }
             return newTime;
           });
@@ -136,18 +173,7 @@ export default function ChessClock({
         clearInterval(intervalRef.current);
       }
     };
-  }, [isGameStarted, isWhiteTurn, gameId, onTimeEndAction, isFirstMove]);
-
-  // Update server periodically (not on every tick)
-  useEffect(() => {
-    if (!isGameStarted || !isClockRunning) return;
-    
-    const serverUpdateInterval = setInterval(() => {
-      updateTimeOnServer(whiteTimeLeft, blackTimeLeft);
-    }, 500); // Update server twice per second
-    
-    return () => clearInterval(serverUpdateInterval);
-  }, [isGameStarted, isClockRunning, whiteTimeLeft, blackTimeLeft]);
+  }, [isGameStarted, isWhiteTurn, isFirstMove]);
 
   // Track first move completion
   useEffect(() => {
@@ -155,40 +181,6 @@ export default function ChessClock({
       setIsFirstMove(false);
     }
   }, [isWhiteTurn, isFirstMove]);
-
-  // Throttle server updates
-  const updateTimeOnServer = useCallback(debounce(async (whiteTime: number, blackTime: number) => {
-    // Only send update if time difference is significant (more than 500ms)
-    const timeDiff = Math.abs(whiteTime - prevWhiteTimeRef.current) > 500 || 
-                    Math.abs(blackTime - prevBlackTimeRef.current) > 500
-
-    if (timeDiff) {
-      try {
-        const response = await fetch(`/api/games/${gameId}/time`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify({
-            whiteTime,
-            blackTime,
-          }),
-        })
-        
-        if (!response.ok) {
-          const errorData = await response.json()
-          throw new Error(errorData.error || 'Failed to update time on server')
-        }
-
-        // Update previous time references
-        prevWhiteTimeRef.current = whiteTime
-        prevBlackTimeRef.current = blackTime
-      } catch (error) {
-        console.error('Error updating time on server:', error)
-      }
-    }
-  }, 1000), [gameId]) // Reduced debounce time to 1 second
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60000);

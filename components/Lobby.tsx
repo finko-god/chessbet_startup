@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { CreateGameModal } from './CreateGameModal';
 import { useRouter } from 'next/navigation';
-import { X, RefreshCw, Plus, Crown } from 'lucide-react';
+import { X, Crown } from 'lucide-react';
+// import { ChessboardComponent } from './ChessBoard';
 
 interface Game {
   id: string;
@@ -28,9 +29,13 @@ interface User {
   email: string;
 }
 
-export function Lobby() {
+interface LobbyProps {
+  isCreateModalOpen: boolean;
+  setIsCreateModalOpen: (open: boolean) => void;
+}
+
+export function Lobby({ isCreateModalOpen, setIsCreateModalOpen }: LobbyProps) {
   const [games, setGames] = useState<Game[]>([]);
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
@@ -118,6 +123,19 @@ export function Lobby() {
   useEffect(() => {
     const gamesInterval = setInterval(fetchGames, 5000);
     return () => clearInterval(gamesInterval);
+  }, []);
+
+  // Listen for refresh-games event
+  useEffect(() => {
+    const handleRefreshGames = () => {
+      fetchGames();
+    };
+
+    const element = document.querySelector('.games-list');
+    if (element) {
+      element.addEventListener('refresh-games', handleRefreshGames);
+      return () => element.removeEventListener('refresh-games', handleRefreshGames);
+    }
   }, []);
 
   const handleCreateGame = async (betAmount: number, timeControl: string) => {
@@ -231,83 +249,65 @@ export function Lobby() {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row justify-between items-center sm:items-center gap-6">
-        <div className="text-center sm:text-left">
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/80 bg-clip-text text-transparent">
-            Available Games
-          </h2>
-          <p className="text-muted-foreground mt-2">Join an existing game or create your own</p>
-        </div>
-        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
-          <Button 
-            onClick={() => fetchGames()} 
-            variant="outline"
-            className="gap-2 hover:bg-primary/10 hover:text-primary hover:border-primary/20"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </Button>
-          <Button 
-            onClick={() => setIsCreateModalOpen(true)} 
-            className="gap-2 hover:bg-primary/90"
-          >
-            <Plus className="w-4 h-4" />
-            Create Game
-          </Button>
-        </div>
-      </div>
+      <div className="overflow-x-auto w-full">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b border-border">
+              <th className="text-left pl-10 py-3 px-4 text-muted-foreground font-medium">Player</th>
+              <th className="text-center py-3 px-4 text-muted-foreground font-medium">Time Control</th>
+              <th className="text-center py-3 px-4 text-muted-foreground font-medium">Bet Amount</th>
+              <th className="text-right pr-10 py-3 px-4 text-muted-foreground font-medium">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {games.map((game) => (
+              <tr 
+                key={game.id} 
+                className="border-b border-border hover:bg-accent/5 transition-colors"
+              >
+                <td className="py-4 px-4">
+                  <div className="flex items-center gap-2">
+                                  <Crown className="w-4 h-4 text-primary" />
+                    <span className="font-medium">{game.player1.name}</span>
+                  </div>
+                </td>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {games.map((game) => (
-          <Card key={game.id} className="relative glass-effect hover:shadow-lg transition-all duration-300">
-            {game.player1.id === user?.id && game.status === 'waiting' && (
-              <Button 
-                onClick={() => handleCancelGame(game.id)}
-                variant="ghost"
-                size="icon"
-                className="absolute top-4 right-4 h-8 w-8 p-0 text-destructive hover:text-destructive/80 hover:bg-destructive/10"
-                aria-label="Cancel Game"
-              >
-                <X size={18} />
-              </Button>
-            )}
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold">
-                {game.player1.name}&apos;s Game
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Crown className="w-4 h-4 text-primary" />
-                  <span className="text-sm font-medium">Bet Amount</span>
-                </div>
-                <span className="text-lg font-bold text-primary">{game.betAmount}</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Time Control</span>
-                <span className="text-sm font-medium">
-                  {game.timeControl === '3+2' ? '3 min + 2 sec' : '5 min'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Status</span>
-                <span className={`text-sm font-medium ${
-                  game.status === 'waiting' ? 'text-primary' : 'text-muted-foreground'
-                }`}>
-                  {game.status === 'waiting' ? 'Waiting for opponent' : 'In progress'}
-                </span>
-              </div>
-              <Button
-                onClick={() => handleJoinGame(game.id)}
-                disabled={game.status !== 'waiting' || game.player1.id === user?.id}
-                className="w-full mt-4 hover:bg-primary/90"
-              >
-                {game.player1.id === user?.id ? 'Your Game' : 'Join Game'}
-              </Button>
-            </CardContent>
-          </Card>
-        ))}
+                <td className="py-4 px-4 text-center">
+                  <span className="font-medium">
+                    {game.timeControl === '3+2' ? '3 min + 2 sec' : '5 min'}
+                  </span>
+                </td>
+                <td className="py-4 px-4 text-center">
+  
+                  <span className="font-medium text-primary">{game.betAmount}</span>
+                </td>
+                <td className="py-4 px-4 text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    {game.player1.id === user?.id && game.status === 'waiting' && (
+                      <Button 
+                        onClick={() => handleCancelGame(game.id)}
+                        variant="ghost"
+                        size="sm"
+                        className="text-destructive hover:text-destructive/80 hover:bg-destructive/10"
+                      >
+                        <X size={16} />
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => handleJoinGame(game.id)}
+                      disabled={game.status !== 'waiting' || game.player1.id === user?.id}
+                      size="sm"
+                      variant={game.player1.id === user?.id ? "outline" : "default"}
+                      className={game.player1.id === user?.id ? "pointer-events-none" : ""}
+                    >
+                      {game.player1.id === user?.id ? 'Your Game' : 'Join Game'}
+                    </Button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
 
       <CreateGameModal

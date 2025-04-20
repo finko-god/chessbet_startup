@@ -64,22 +64,37 @@ export async function PUT(
         );
       }
 
-      // Update the game with new times
-      const updatedGame = await prisma.game.update({
-        where: { id },
-        data: {
-          player1TimeLeft: whiteTime,
-          player2TimeLeft: blackTime,
-        },
-      });
+      // Only update times if the incoming values are less than the stored values
+      // This prevents accidental resets when a player reconnects
+      const updatedData: { player1TimeLeft?: number; player2TimeLeft?: number } = {};
+      
+      if (typeof whiteTime === 'number' && (game.player1TimeLeft === null || whiteTime < game.player1TimeLeft)) {
+        updatedData.player1TimeLeft = whiteTime;
+      }
+      
+      if (typeof blackTime === 'number' && (game.player2TimeLeft === null || blackTime < game.player2TimeLeft)) {
+        updatedData.player2TimeLeft = blackTime;
+      }
+      
+      // Only update if there are changes
+      if (Object.keys(updatedData).length > 0) {
+        // Update the game with new times
+        const updatedGame = await prisma.game.update({
+          where: { id },
+          data: updatedData,
+        });
 
-      // Trigger Pusher event
-      await pusherServer.trigger(`private-game-${id}`, 'time-update', {
-        whiteTime: updatedGame.player1TimeLeft,
-        blackTime: updatedGame.player2TimeLeft
-      });
+        // Trigger Pusher event
+        await pusherServer.trigger(`private-game-${id}`, 'time-update', {
+          whiteTime: updatedGame.player1TimeLeft,
+          blackTime: updatedGame.player2TimeLeft
+        });
 
-      return NextResponse.json(updatedGame);
+        return NextResponse.json(updatedGame);
+      } else {
+        // No changes needed, just return the current game
+        return NextResponse.json(game);
+      }
     } catch (jwtError) {
       console.error('Token verification error:', jwtError);
       return NextResponse.json(
