@@ -219,7 +219,7 @@ export default function AccountPage() {
                     <p>Use the &quot;Transfer to Stripe&quot; button to move your ChessCoins to your Stripe account:</p>
                     <ul className="list-disc pl-6 space-y-2">
                       <li>Transfers are processed immediately in 99% of cases</li>
-                      <li>A 1 EUR commission fee will be deducted from your transfer amount</li>
+                      <li>A 5% commission fee will be deducted from your transfer amount</li>
                       <li>You can transfer any amount from your ChessCoin balance</li>
                     </ul>
                     
@@ -236,7 +236,7 @@ export default function AccountPage() {
                     <h3 className="font-semibold">Important Notes:</h3>
                     <ul className="list-disc pl-6 space-y-2">
                       <li>1 ChessCoin = 1 EUR</li>
-                      <li>A 1 EUR commission fee is deducted at transfer time</li>
+                      <li>A 5% commission fee is deducted at transfer time</li>
                       <li>Stripe may charge additional fees for payouts</li>
                       <li>Verification may be required for security purposes</li>
                     </ul>
@@ -328,11 +328,11 @@ export default function AccountPage() {
                   placeholder={`Max: ${user.chessCoin} ChessCoins`}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Note: 1 ChessCoin = 1 EUR. A commission fee of 1 EUR will be deducted.
+                  Note: 1 ChessCoin = 1 EUR. A commission fee of 5% will be deducted.
                 </p>
                 {transferAmount && (
                   <p className="text-sm">
-                    You will receive: {Math.max(0, parseInt(transferAmount) - 1)} EUR in your Stripe account
+                    You will receive: {Math.max(0, parseInt(transferAmount) * 0.95)} EUR in your Stripe account
                   </p>
                 )}
               </div>

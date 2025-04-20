@@ -32,6 +32,7 @@ export default function ChessClock({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const prevWhiteTimeRef = useRef(whiteTime);
   const prevBlackTimeRef = useRef(blackTime);
+  const timeEndedRef = useRef(false);
   
   // Pusher integration
   const handleTimeUpdate = useCallback(({ whiteTime, blackTime }: { 
@@ -84,6 +85,9 @@ export default function ChessClock({
       intervalRef.current = null;
     }
 
+    // Reset time ended flag when game starts or turn changes
+    timeEndedRef.current = false;
+
     // Don't start clock on first move for white (special case)
     if (isFirstMove && isWhiteTurn) {
       return;
@@ -102,7 +106,8 @@ export default function ChessClock({
         if (isWhiteTurn) {
           setWhiteTimeLeft(prev => {
             const newTime = Math.max(0, prev - elapsed);
-            if (newTime <= 0) {
+            if (newTime <= 0 && !timeEndedRef.current) {
+              timeEndedRef.current = true;
               clearInterval(intervalRef.current!);
               onTimeEndAction(gameId, 'black');
               return 0;
@@ -112,7 +117,8 @@ export default function ChessClock({
         } else {
           setBlackTimeLeft(prev => {
             const newTime = Math.max(0, prev - elapsed);
-            if (newTime <= 0) {
+            if (newTime <= 0 && !timeEndedRef.current) {
+              timeEndedRef.current = true;
               clearInterval(intervalRef.current!);
               onTimeEndAction(gameId, 'white');
               return 0;

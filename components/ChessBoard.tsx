@@ -47,6 +47,25 @@ interface GameState {
   player2TimeLeft: number;
 }
 
+export function ChessboardComponent() {
+  const [game] = useState(new Chess())
+
+  return (
+    <div className="w-full max-w-2xl mx-auto">
+      <Chessboard 
+        position={game.fen()}
+        boardWidth={600}
+        customBoardStyle={{
+          borderRadius: '4px',
+          boxShadow: '0 5px 15px rgba(0, 0, 0, 0.5)'
+        }}
+        customDarkSquareStyle={{ backgroundColor: '#779556' }}
+        customLightSquareStyle={{ backgroundColor: '#ebecd0' }}
+      />
+    </div>
+  )
+}
+
 export default function ChessBoard({
   gameId,
   whitePlayerId,
@@ -130,10 +149,21 @@ export default function ChessBoard({
       }
 
       if (newChess.isGameOver()) {
+        // Determine the reason for game over
+        const reason = newChess.isCheckmate() 
+          ? 'checkmate' 
+          : newChess.isStalemate() 
+            ? 'stalemate' 
+            : newChess.isDraw() 
+              ? 'draw' 
+              : 'Game finished'
+        
+        // Only set a winner if it's checkmate
         const winner = newChess.isCheckmate() 
-          ? newChess.turn() === 'w' ? (whitePlayerId || null) : (blackPlayerId || null)
+          ? (newChess.turn() === 'w' ? (blackPlayerId || null) : (whitePlayerId || null))
           : null
-        onGameEnd?.(winner, newChess.isCheckmate() ? 'checkmate' : 'Game finished')
+        
+        onGameEnd?.(winner, reason)
       }
     } catch (error) {
       console.error('Error processing move event:', error)
@@ -145,8 +175,6 @@ export default function ChessBoard({
   }), [handleMoveEvent])
 
   usePusherChannel(channelName, eventHandlers)
-
-  
 
   // Modify updateGameState to trigger Pusher
   const updateGameState = useCallback(
@@ -245,6 +273,10 @@ export default function ChessBoard({
         updateGameState(move.san, isFirstMove)
         if (isFirstMove) setFirstMoveMade(true)
         setOptionSquares({})
+        
+        // Check for stalemate or other game ending conditions
+        checkGameEndingConditions(gameCopy)
+        
         return true
       }
     } catch (error) {
@@ -280,6 +312,10 @@ export default function ChessBoard({
           updateGameState(move.san, !firstMoveMade && gameCopy.turn() === 'w')
           setSelectedPiece(null)
           setOptionSquares({})
+          
+          // Check for stalemate or other game ending conditions
+          checkGameEndingConditions(gameCopy)
+          
           return
         }
       } catch (error) {
@@ -310,6 +346,42 @@ export default function ChessBoard({
     ) {
       setSelectedPiece(square)
       showPossibleMoves(square)
+    }
+  }
+
+  // Function to check for game ending conditions
+  const checkGameEndingConditions = async (chessGame: Chess) => {
+    if (chessGame.isGameOver()) {
+      let reason = 'Game finished'
+      let winner: string | null = null
+      
+      if (chessGame.isCheckmate()) {
+        reason = 'checkmate'
+        winner = chessGame.turn() === 'w' ? (blackPlayerId || null) : (whitePlayerId || null)
+      } else if (chessGame.isStalemate()) {
+        reason = 'stalemate'
+      } else if (chessGame.isDraw()) {
+        reason = 'draw'
+      }
+      
+      if (onGameEnd) {
+        onGameEnd(winner, reason)
+      }
+      
+      // Update game state in database
+      await fetch(`/api/games/${gameId}/state`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          status: 'finished',
+          winner: winner,
+          reason: reason
+        })
+      })
+      
+      // Redirect to landing page after a short delay
+      setTimeout(() => router.push('/'), 1500)
     }
   }
 
@@ -358,35 +430,34 @@ export default function ChessBoard({
     setOptionSquares({})
   }
 
-
-// Update the boardWidth calculation in the useEffect hook
-useEffect(() => {
-  const updateBoardWidth = () => {
-    if (!containerRef.current) return
-    
-    const isMobile = window.innerWidth < 768
-    
-    if (isMobile) {
-      // For mobile, use almost the full viewport width but leave room for notation
-      const viewportWidth = window.innerWidth
-      const viewportHeight = window.innerHeight
+  // Update the boardWidth calculation in the useEffect hook
+  useEffect(() => {
+    const updateBoardWidth = () => {
+      if (!containerRef.current) return
       
-      // Set the board size to fill maximum available space while maintaining aspect ratio
-      // Reduced by 32px to account for padding and notation
-      setBoardWidth(Math.min(viewportWidth - 32, viewportHeight - 200))
-    } else {
-      // For larger screens, use container width as before but account for notation
-      const containerWidth = containerRef.current.clientWidth
-      const containerHeight = window.innerHeight
-      const maxSize = Math.min(containerWidth * 0.85, containerHeight * 0.7) // Reduced from 0.9 to 0.85
-      setBoardWidth(Math.max(maxSize, 280))
+      const isMobile = window.innerWidth < 768
+      
+      if (isMobile) {
+        // For mobile, use almost the full viewport width but leave room for notation
+        const viewportWidth = window.innerWidth
+        const viewportHeight = window.innerHeight
+        
+        // Set the board size to fill maximum available space while maintaining aspect ratio
+        // Reduced by 32px to account for padding and notation
+        setBoardWidth(Math.min(viewportWidth - 32, viewportHeight - 200))
+      } else {
+        // For larger screens, use container width as before but account for notation
+        const containerWidth = containerRef.current.clientWidth
+        const containerHeight = window.innerHeight
+        const maxSize = Math.min(containerWidth * 0.85, containerHeight * 0.7) // Reduced from 0.9 to 0.85
+        setBoardWidth(Math.max(maxSize, 280))
+      }
     }
-  }
-  
-  updateBoardWidth()
-  window.addEventListener('resize', updateBoardWidth)
-  return () => window.removeEventListener('resize', updateBoardWidth)
-}, [])
+    
+    updateBoardWidth()
+    window.addEventListener('resize', updateBoardWidth)
+    return () => window.removeEventListener('resize', updateBoardWidth)
+  }, [])
 
   // Check for check state to highlight the king
   useEffect(() => {
@@ -436,30 +507,46 @@ useEffect(() => {
         setGame(newChess)
         setCurrentPosition(newGameState.fen)
   
-        if (newChess.isCheckmate()) {
-          const winner = newChess.turn() === 'w' ? blackPlayerId : whitePlayerId
-          if (onGameEnd && winner) {
-            onGameEnd(winner, 'checkmate')
-            // Update game state in database
-            await fetch(`/api/games/${gameId}/state`, {
-              method: 'PUT',
-              headers: { 'Content-Type': 'application/json' },
-              credentials: 'include',
-              body: JSON.stringify({
-                status: 'finished',
-                winner: winner
-              })
-            })
+        // Check for all game ending conditions
+        if (newChess.isGameOver()) {
+          let reason = 'Game finished'
+          let winner: string | null = null
+          
+          if (newChess.isCheckmate()) {
+            reason = 'checkmate'
+            winner = newChess.turn() === 'w' ? (blackPlayerId || null) : (whitePlayerId || null)
+          } else if (newChess.isStalemate()) {
+            reason = 'stalemate'
+          } else if (newChess.isDraw()) {
+            reason = 'draw'
           }
-          router.push('/')
+          
+          if (onGameEnd) {
+            onGameEnd(winner, reason)
+          }
+          
+          // Update game state in database
+          await fetch(`/api/games/${gameId}/state`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              status: 'finished',
+              winner: winner,
+              reason: reason
+            })
+          })
+          
+          // Redirect to landing page after a short delay
+          setTimeout(() => router.push('/'), 1500)
         }
       }
   
       if (newGameState.status === 'finished') {
         if (onGameEnd) {
-          onGameEnd(newGameState.winner, 'Game finished')
+          onGameEnd(newGameState.winner, newGameState.reason || 'Game finished')
         }
-        router.push('/')
+        setTimeout(() => router.push('/'), 1500)
       }
     } catch (error) {
       console.error('Error polling game state:', error)

@@ -50,8 +50,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // Calculate amount after commission (1 EUR)
-    const amountAfterCommission = (amount - 1) * 100; // Convert to cents
+    // Calculate amount after commission (5%)
+    const commission = amount * 0.05;
+    const amountAfterCommission = (amount - commission) * 100;
 
     try {
       // Create transfer to connected account
@@ -59,7 +60,7 @@ export async function POST(request: Request) {
         amount: amountAfterCommission,
         currency: 'eur',
         destination: user.stripeConnectId,
-        description: `Transfer of ${amount} ChessCoins (${amountAfterCommission/100} EUR after commission)`
+        description: `Transfer of ${amount} ChessCoins (${amountAfterCommission/100} EUR after 5% commission)`
       });
 
       // Update user's balance and create transfer record

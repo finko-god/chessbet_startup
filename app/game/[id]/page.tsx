@@ -9,6 +9,7 @@ import ChessClock from '@/components/ChessClock'
 import { use } from 'react'
 import { X } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Chess } from 'chess.js'
 
 interface User {
   id: string
@@ -201,20 +202,36 @@ export default function GamePage({ params }: { params: Promise<{ id: string }> }
   }
 
   const handleTimeEnd = async (gameId: string, winner: 'white' | 'black') => {
-    const winnerId = winner === 'white' ? game?.whitePlayerId : game?.blackPlayerId
-    if (winnerId) {
-      setGameResult({ winner: winnerId, reason: 'time' })
-      try {
+    try {
+      // Create chess instance to check for insufficient material
+      const chessInstance = new Chess(game?.fen ?? undefined)
+      const hasInsufficientMaterial = chessInstance.isInsufficientMaterial()
+      
+      // If there's insufficient material, it's a draw even if time ran out
+      if (hasInsufficientMaterial) {
+        setGameResult({ winner: null, reason: 'insufficient material draw' })
         await fetch(`/api/games/${gameId}/result`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ result: 'time', winnerId: winnerId }),
+          body: JSON.stringify({ result: 'insufficient_material', winnerId: null }),
         })
-        await fetchGame()
-      } catch (error) {
-        console.error('Error recording game result:', error)
+      } else {
+        // Normal time loss scenario
+        const winnerId = winner === 'white' ? game?.whitePlayerId : game?.blackPlayerId
+        if (winnerId) {
+          setGameResult({ winner: winnerId, reason: 'time' })
+          await fetch(`/api/games/${gameId}/result`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ result: 'time', winnerId: winnerId }),
+          })
+        }
       }
+      await fetchGame()
+    } catch (error) {
+      console.error('Error recording game result:', error)
     }
   }
 
