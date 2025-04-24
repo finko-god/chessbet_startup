@@ -1,14 +1,6 @@
 {
   "buildCommand": "prisma generate && next build",
-  "installCommand": "npm install",
-  "crons": [
-    {
-      "path": "/api/cron/cleanup",
-      "schedule": "* * * * *"
-    },
-    {
-      "path": "/api/cron/time",
-      "schedule": "* * * * *"
-    }
-  ]
+  "installCommand": "npm install"
+
 } 
+

@@ -4,8 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
-// import ChessCoinBalance from '@/components/ChessCoinBalance';
-import { Crown } from 'lucide-react';
+import ChessCoinBalance from '@/components/ChessCoinBalance';
 
 interface User {
   id: string;
@@ -19,25 +18,26 @@ export default function Header() {
   const [isLoading, setIsLoading] = useState(true);
   const pathname = usePathname();
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const response = await fetch('/api/auth/me', {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const userData = await response.json();
-          setUser(userData);
-        }
-      } catch (error) {
-        console.error('Error fetching user:', error);
-      } finally {
-        setIsLoading(false);
+  const fetchUserData = async () => {
+    try {
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include',
+      });
+      
+      if (response.ok) {
+        const userData = await response.json();
+        setUser(userData);
       }
-    };
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    fetchUser();
-  }, []);
+  useEffect(() => {
+    fetchUserData();
+  }, [pathname]);
 
   const handleSignOut = async () => {
     try {
@@ -45,11 +45,14 @@ export default function Header() {
         method: 'POST',
         credentials: 'include',
       });
+
       if (response.ok) {
         window.location.href = '/';
+      } else {
+        console.error('Sign out failed:', await response.text());
       }
     } catch (error) {
-      console.error('Error signing out:', error);
+      console.error('Sign out error:', error);
     }
   };
 
@@ -82,8 +85,7 @@ export default function Header() {
               <>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1.5 bg-primary/10 px-4 py-1.5 rounded-full border border-primary/20 hover:bg-primary/15 transition-colors duration-200">
-                    <Crown className="w-4 h-4 text-primary" />
-                    <span className="text-sm font-semibold text-primary">{user.chessCoin}</span>
+                    <ChessCoinBalance />
                   </div>
                 </div>
                 <Link href="/account">

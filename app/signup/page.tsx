@@ -111,7 +111,10 @@ export default function SignUpPage() {
                     onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
                   />
                   <Label htmlFor="terms" className="text-sm text-muted-foreground">
-                    I agree to the terms and conditions
+                    I agree to the{' '}
+                    <Link href="/terms" className="text-primary hover:underline">
+                      terms and conditions
+                    </Link>
                   </Label>
                 </div>
               </div>

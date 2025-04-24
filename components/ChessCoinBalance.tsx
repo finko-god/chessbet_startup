@@ -24,9 +24,16 @@ export default function ChessCoinBalance() {
     }
   }
 
+  // Fetch balance on mount and when pathname changes
   useEffect(() => {
     fetchBalance()
-  }, [pathname]) // Refetch when pathname changes (user navigates)
+  }, [pathname])
+
+  // Poll for balance updates every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(fetchBalance, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   if (error) {
     return <div className="text-red-500">{error}</div>
@@ -34,8 +41,8 @@ export default function ChessCoinBalance() {
 
   return (
     <div className="flex items-center space-x-2">
-      <Crown className="h-5 w-5 text-primary" />
-      <span className="text-lg">
+      <Crown className="h-4 w-4 text-primary" />
+      <span className="text-md">
         {balance !== null ? balance : 'Loading...'}
       </span>
     </div>
