@@ -37,11 +37,11 @@ export function CreateGameModal({ isOpen, onCloseAction, onCreateAction }: Creat
       await onCreateAction(amount, timeControl);
       setBetAmount('');
       setTimeControl('5+0');
-    } catch (error: any) {
-      if (error.message?.includes('Insufficient ChessCoins')) {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message?.includes('Insufficient ChessCoins')) {
         setError('You don\'t have enough ChessCoins to create this game. Please top up your balance in your account page.');
       } else {
-        setError(error.message || 'An error occurred while creating the game');
+        setError(error instanceof Error ? error.message : 'An error occurred while creating the game');
       }
     }
   };

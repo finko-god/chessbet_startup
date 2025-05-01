@@ -170,9 +170,9 @@ export function Lobby({ isCreateModalOpen, setIsCreateModalOpen }: LobbyProps) {
           throw new Error(error.error || 'Failed to create game');
         }
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating game:', error);
-      throw error; // Propagate the error to the CreateGameModal
+      throw error instanceof Error ? error : new Error('An unknown error occurred');
     }
   };
 
