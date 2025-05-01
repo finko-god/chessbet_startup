@@ -63,10 +63,10 @@ export async function POST(request: Request) {
             },
             unit_amount: 100, // 1 EUR = 100 cents
           },
-          quantity: 10,
+          quantity: 20,
           adjustable_quantity: {
             enabled: true,
-            minimum: 1,
+            minimum: 10,
             maximum: 50,
           },
         },
