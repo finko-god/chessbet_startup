@@ -33,9 +33,17 @@ export function CreateGameModal({ isOpen, onCloseAction, onCreateAction }: Creat
       return;
     }
 
-    await onCreateAction(amount, timeControl);
-    setBetAmount('');
-    setTimeControl('5+0');
+    try {
+      await onCreateAction(amount, timeControl);
+      setBetAmount('');
+      setTimeControl('5+0');
+    } catch (error: any) {
+      if (error.message?.includes('Insufficient ChessCoins')) {
+        setError('You don\'t have enough ChessCoins to create this game. Please top up your balance in your account page.');
+      } else {
+        setError(error.message || 'An error occurred while creating the game');
+      }
+    }
   };
 
   return (
@@ -69,7 +77,20 @@ export function CreateGameModal({ isOpen, onCloseAction, onCreateAction }: Creat
               </SelectContent>
             </Select>
           </div>
-          {error && <p className="text-red-500 text-sm">{error}</p>}
+          {error && (
+            <div className="text-red-500 text-sm space-y-2">
+              <p>{error}</p>
+              {error.includes('top up your balance') && (
+                <Button
+                  variant="link"
+                  className="text-primary hover:text-primary/80 p-0 h-auto"
+                  onClick={() => window.location.href = '/account'}
+                >
+                  Go to Account Page
+                </Button>
+              )}
+            </div>
+          )}
           <div className="flex justify-end space-x-2">
             <Button type="button" variant="outline" onClick={() => onCloseAction()}>
               Cancel

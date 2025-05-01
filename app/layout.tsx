@@ -17,10 +17,22 @@ export const metadata: Metadata = {
     "online chess wagers", "chess predictions", "chess esports", "play chess for money"
   ],
   icons: {
-    icon: '/icon4.png',
+    icon: [
+      { url: '/icon4.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon4.png', sizes: '16x16', type: 'image/png' },
+    ],
     shortcut: '/icon4.png',
-    apple: '/icon4.png',
+    apple: [
+      { url: '/icon4.png', sizes: '180x180', type: 'image/png' },
+    ],
+    other: [
+      {
+        rel: 'mask-icon',
+        url: '/icon4.png',
+      },
+    ],
   },
+  manifest: '/manifest.json',
   openGraph: {
     title: "ChessBet ",
     description: "Place bets on your favorite chess matches, challenge friends, and earn ChessCoins on ChessBet — the ultimate chess betting experience.",

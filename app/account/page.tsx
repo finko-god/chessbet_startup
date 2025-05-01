@@ -207,6 +207,39 @@ export default function AccountPage() {
           </CardContent>
         </Card>
 
+
+
+        <Card className="bg-card">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-foreground">ChessCoins Balance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
+              <ChessCoinBalance />
+              <div className="flex space-x-4 w-full max-w-xs">
+                <Button
+                  onClick={handleVerifyAccount}
+                  className="flex-1"
+                  title={user.stripeConnectId ? "View Stripe Connect account" : "Connect Stripe account"}
+                >
+                  {user.stripeConnectId ? "My Account" : "Connect Account"}
+                </Button>
+                <Button
+                  onClick={() => setIsTransferDialogOpen(true)}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600"
+                  disabled={!user.stripeConnectId}
+                  title={!user.stripeConnectId ? "Please connect Stripe account first" : ""}
+                >
+                  Payout to Bank
+                </Button>
+              </div>
+              <Button onClick={handleTopUp} className="w-full max-w-xs">
+                Top Up ChessCoins
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="bg-card">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-foreground">Withdrawal Guide</CardTitle>
@@ -257,37 +290,6 @@ export default function AccountPage() {
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-card">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-foreground">ChessCoins Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <ChessCoinBalance />
-              <div className="flex space-x-4 w-full max-w-xs">
-                <Button
-                  onClick={handleVerifyAccount}
-                  className="flex-1"
-                  title={user.stripeConnectId ? "View Stripe Connect account" : "Connect Stripe account"}
-                >
-                  {user.stripeConnectId ? "My Account" : "Connect Account"}
-                </Button>
-                <Button
-                  onClick={() => setIsTransferDialogOpen(true)}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600"
-                  disabled={!user.stripeConnectId}
-                  title={!user.stripeConnectId ? "Please connect Stripe account first" : ""}
-                >
-                  Payout to Bank
-                </Button>
-              </div>
-              <Button onClick={handleTopUp} className="w-full max-w-xs">
-                Top Up ChessCoins
-              </Button>
-            </div>
           </CardContent>
         </Card>
 

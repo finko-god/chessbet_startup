@@ -166,10 +166,13 @@ export function Lobby({ isCreateModalOpen, setIsCreateModalOpen }: LobbyProps) {
         console.error('Error creating game:', error);
         if (response.status === 401) {
           router.push('/signin');
+        } else {
+          throw new Error(error.error || 'Failed to create game');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating game:', error);
+      throw error; // Propagate the error to the CreateGameModal
     }
   };
 
