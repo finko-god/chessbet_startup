@@ -20,6 +20,21 @@ interface User {
   isVerified: boolean;
 }
 
+interface VerificationRequirements {
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  transfers_capability: string | null;
+  eventually_due: string[];
+  currently_due: string[];
+  past_due: string[];
+}
+
+interface VerificationStatus {
+  isVerified: boolean;
+  message: string;
+  requirements?: VerificationRequirements;
+}
+
 export default function AccountPage() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,11 +43,7 @@ export default function AccountPage() {
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferError, setTransferError] = useState('');
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<{
-    isVerified: boolean;
-    message: string;
-    requirements?: any;
-  } | null>(null);
+  const [verificationStatus, setVerificationStatus] = useState<VerificationStatus | null>(null);
   const router = useRouter();
 
   const checkVerificationStatus = async () => {
