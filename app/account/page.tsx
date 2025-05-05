@@ -10,6 +10,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import ChessCoinBalance from '@/components/ChessCoinBalance';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2 } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface User {
   id: string;
@@ -44,6 +45,7 @@ export default function AccountPage() {
   const [transferError, setTransferError] = useState('');
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<VerificationStatus | null>(null);
+  const [hasTopUp, setHasTopUp] = useState(false);
   const router = useRouter();
 
   const checkVerificationStatus = async () => {
@@ -73,7 +75,7 @@ export default function AccountPage() {
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
       });
-      
+
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
@@ -95,6 +97,20 @@ export default function AccountPage() {
   useEffect(() => {
     fetchUserData();
   }, [router]);
+
+  useEffect(() => {
+    const checkTopUp = async () => {
+      const response = await fetch('/api/stripe/check-top-up', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      const data = await response.json();
+      setHasTopUp(data.hasTopUp);
+    };
+    checkTopUp();
+  }, []);
 
   const handleSignOut = async () => {
     try {
@@ -164,7 +180,7 @@ export default function AccountPage() {
     if (user?.stripeConnectId) {
       // Check immediately
       checkVerificationStatus();
-      
+
       // Then check every 30 seconds
       const interval = setInterval(checkVerificationStatus, 30000);
       return () => clearInterval(interval);
@@ -203,7 +219,7 @@ export default function AccountPage() {
       setIsTransferDialogOpen(false);
       setTransferAmount('');
       await fetchUserData();
-      
+
       // Show success alert
       setShowSuccessAlert(true);
       // Hide alert after 5 seconds
@@ -220,13 +236,22 @@ export default function AccountPage() {
   //     const response = await fetch('/api/stripe/create-login-link', {
   //       method: 'POST',
   //     });
-      
+
   //     const { url } = await response.json();
   //     window.location.href = url;
   //   } catch (error) {
   //     console.error('Error accessing payouts:', error);
   //   }
   // };
+
+  useEffect(() => {
+    if (verificationStatus && !verificationStatus.isVerified) {
+      const timer = setTimeout(() => {
+        setVerificationStatus(null);
+      }, 5000); // Show alert for 5 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [verificationStatus]);
 
   if (isLoading) {
     return (
@@ -264,26 +289,37 @@ export default function AccountPage() {
         {verificationStatus && !verificationStatus.isVerified && (
           <Alert className="bg-amber-50 border-amber-200">
             <AlertDescription className="text-amber-800">
-              {verificationStatus.message}
-              {verificationStatus.requirements && (
-                <div className="mt-2 text-sm">
-                  <p className="font-medium">Verification requirements:</p>
-                  <ul className="list-disc pl-4 mt-1">
-                    {!verificationStatus.requirements.charges_enabled && (
-                      <li>Charges capability not enabled</li>
-                    )}
-                    {!verificationStatus.requirements.payouts_enabled && (
-                      <li>Payouts capability not enabled</li>
-                    )}
-                    {verificationStatus.requirements.transfers_capability !== 'active' && (
-                      <li>Transfers capability not active</li>
-                    )}
-                    {verificationStatus.requirements.currently_due?.length > 0 && (
-                      <li>Additional verification required</li>
-                    )}
-                  </ul>
-                </div>
-              )}
+              {(() => {
+                // If no Stripe Connect account exists yet
+                if (!user.stripeConnectId) {
+                  return "Please verify your account by clicking on the \"My Account\" button to enable payouts to your bank account.";
+                }
+
+                const requirements = verificationStatus.requirements;
+                if (!requirements) {
+                  return "Please complete your account verification by clicking on the \"My Account\" button to enable payouts.";
+                }
+
+                // If identity verification is pending
+                if (requirements.currently_due?.includes('identity_document_verification')) {
+                  return "Please complete your identity verification by uploading your ID document in the \"My Account&quot\" section.";
+                }
+
+                // If additional verification is needed
+                if (requirements.currently_due && requirements.currently_due.length > 0) {
+                  return "Please complete the remaining verification steps in the \"My Account \" section to enable payouts.";
+                }
+
+                // If capabilities are not enabled yet
+                if (!requirements.charges_enabled ||
+                  !requirements.payouts_enabled ||
+                  requirements.transfers_capability !== 'active') {
+                  return "Your account is being reviewed. Payouts will be available once the review is complete.";
+                }
+
+                // Default message
+                return "Please complete your account verification to enable payouts.";
+              })()}
             </AlertDescription>
           </Alert>
         )}
@@ -306,36 +342,7 @@ export default function AccountPage() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-foreground">ChessCoins Balance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col items-center justify-center py-8 space-y-4">
-              <ChessCoinBalance />
-              <div className="flex space-x-4 w-full max-w-xs">
-                <Button
-                  onClick={handleVerifyAccount}
-                  className="flex-1"
-                  title={user.stripeConnectId ? "View Stripe Connect account" : "Connect Stripe account"}
-                >
-                  {user.stripeConnectId ? "My Account" : "Connect Account"}
-                </Button>
-                <Button
-                  onClick={() => setIsTransferDialogOpen(true)}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600"
-                  disabled={!user.stripeConnectId || !user.isVerified}
-                  title={!user.stripeConnectId ? "Please connect Stripe account first" : !user.isVerified ? "Please complete verification first" : ""}
-                >
-                  Payout to Bank
-                </Button>
-              </div>
-              <Button onClick={handleTopUp} className="w-full max-w-xs">
-                Top Up ChessCoins
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+
 
         <Card className="bg-card">
           <CardHeader>
@@ -348,7 +355,7 @@ export default function AccountPage() {
                 <AccordionContent>
                   <div className="space-y-4">
                     <p className="font-medium text-amber-600">All verification steps are required for legal compliance and the safety of all users. This process helps prevent fraud and ensures secure transactions.</p>
-                    
+
                     <h3 className="font-semibold">Step 1: Connect Your Stripe Account</h3>
                     <p>Click the &quot;Connect Account&quot; button to link your Stripe account. During registration:</p>
                     <ul className="list-disc pl-6 space-y-2">
@@ -359,7 +366,7 @@ export default function AccountPage() {
                       <li>This is a one-time setup process</li>
 
                     </ul>
-                    
+
                     <h3 className="font-semibold">Step 2: Payout to Bank</h3>
                     <p>Use the &quot;Payout to Bank&quot; button to withdraw your ChessCoins to your bank account:</p>
                     <ul className="list-disc pl-6 space-y-2">
@@ -389,6 +396,71 @@ export default function AccountPage() {
             </Accordion>
           </CardContent>
         </Card>
+        <Card className="bg-card">
+          <CardHeader>
+            <CardTitle className="text-2xl font-bold text-foreground">ChessCoins Balance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col items-center justify-center py-8 space-y-4">
+              <ChessCoinBalance />
+              <div className="flex space-x-4 w-full max-w-xs">
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block w-full">
+                        <Button
+                          onClick={handleVerifyAccount}
+                          className="flex-1 w-full"
+                          disabled={!hasTopUp}
+                        >
+                          {user.stripeConnectId ? "My Account" : "Verify Account"}
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent 
+                      side="bottom" 
+                      className="bg-primary text-primary-foreground p-4 max-w-[280px] text-sm leading-relaxed"
+                      sideOffset={5}
+                    >
+                      {!hasTopUp ? "Make your first top-up before verifying your account" : 
+                       user.stripeConnectId ? "View your Stripe Connect account" : 
+                       "Connect your Stripe account for payouts"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider delayDuration={0}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-block w-full">
+                        <Button
+                          onClick={() => setIsTransferDialogOpen(true)}
+                          className="flex-1 w-full bg-blue-500 hover:bg-blue-600"
+                          disabled={!user.stripeConnectId || !user.isVerified || !hasTopUp}
+                        >
+                          Payout to Bank
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent 
+                      side="bottom" 
+                      className="bg-primary text-primary-foreground p-4 max-w-[280px] text-sm leading-relaxed"
+                      sideOffset={5}
+                    >
+                      {!hasTopUp ? "Make your first top-up before requesting a payout" :
+                       !user.stripeConnectId ? "Connect your Stripe account first" :
+                       !user.isVerified ? "Complete your account verification first" :
+                       "Withdraw your ChessCoins to your bank account"}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Button onClick={handleTopUp} className="w-full max-w-xs">
+                Top Up ChessCoins
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
 
         <Card className="bg-card">
           <CardHeader>
@@ -396,15 +468,15 @@ export default function AccountPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <Button 
+              <Button
                 onClick={() => router.push('/')}
                 className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
               >
                 Return to Lobby
               </Button>
-              <Button 
+              <Button
                 onClick={handleSignOut}
-                variant="outline" 
+                variant="outline"
                 className="w-full border-destructive text-destructive hover:bg-destructive/10"
               >
                 Sign Out
@@ -445,7 +517,7 @@ export default function AccountPage() {
                 <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button 
+                <Button
                   onClick={handleTransfer}
                   disabled={isTransferring}
                 >

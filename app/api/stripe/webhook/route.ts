@@ -1,4 +1,4 @@
-'use server';
+ 'use server';
 
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
@@ -11,8 +11,8 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(request: Request) {
   const body = await request.text();
-  const headersList = await headers();
-  const signature = headersList.get('stripe-signature')!;
+  const headersList = headers();
+  const signature = (await headersList).get('stripe-signature')!;
 
   let event: Stripe.Event;
 
@@ -22,6 +22,7 @@ export async function POST(request: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET!
     );
+    console.log('Received webhook event:', event.type);
   } catch (error) {
     console.error('Webhook signature verification failed:', error);
     return NextResponse.json(
@@ -46,14 +47,22 @@ export async function POST(request: Request) {
       // Convert cents to euros (1:1 ratio with ChessCoins)
       const chessCoinsToAdd = Math.floor(amountTotal / 100);
 
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          chessCoin: {
-            increment: chessCoinsToAdd
+      await prisma.$transaction([
+        prisma.user.update({
+          where: { id: userId },
+          data: {
+            chessCoin: {
+              increment: chessCoinsToAdd
+            }
           }
-        }
-      });
+        }),
+        prisma.topUp.create({
+          data: {
+            userId: userId,
+            amount: amountTotal
+          }
+        })
+      ]);
 
       return NextResponse.json({ success: true });
     } catch (error) {
@@ -67,7 +76,16 @@ export async function POST(request: Request) {
 
   // Handle account verification status updates
   if (event.type === 'account.updated' || event.type === 'account.application.authorized') {
+    console.log('Processing account update event:', event.type);
     const account = event.data.object as Stripe.Account;
+    console.log('Account details:', {
+      id: account.id,
+      charges_enabled: account.charges_enabled,
+      payouts_enabled: account.payouts_enabled,
+      capabilities: account.capabilities,
+      requirements: account.requirements
+    });
+
     const user = await prisma.user.findFirst({
       where: { stripeConnectId: account.id }
     });
@@ -92,14 +110,6 @@ export async function POST(request: Request) {
       });
 
       console.log(`User ${user.id} KYC verification status: ${kycVerified}`);
-      console.log('Account details:', {
-        charges_enabled: account.charges_enabled,
-        payouts_enabled: account.payouts_enabled,
-        transfers_capability: account.capabilities?.transfers,
-        eventually_due: account.requirements?.eventually_due,
-        currently_due: account.requirements?.currently_due,
-        past_due: account.requirements?.past_due
-      });
     }
   }
 
@@ -129,13 +139,6 @@ export async function POST(request: Request) {
       });
 
       console.log(`User ${user.id} person verification updated, KYC status: ${kycVerified}`);
-      console.log('Account details:', {
-        charges_enabled: accountDetails.charges_enabled,
-        payouts_enabled: accountDetails.payouts_enabled,
-        eventually_due: accountDetails.requirements?.eventually_due,
-        currently_due: accountDetails.requirements?.currently_due,
-        past_due: accountDetails.requirements?.past_due
-      });
     }
   }
 
@@ -168,12 +171,10 @@ export async function POST(request: Request) {
     });
 
     if (payoutRecord) {
-      await prisma.$transaction([
-        prisma.payout.update({
-          where: { id: payoutRecord.id },
-          data: { status: 'paid' }
-        }),
-      ]);
+      await prisma.payout.update({
+        where: { id: payoutRecord.id },
+        data: { status: 'paid' }
+      });
     }
   }
 
