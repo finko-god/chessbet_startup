@@ -29,6 +29,7 @@ export async function GET(request: Request) {
         email: true,
         chessCoin: true,
         stripeConnectId: true,
+        isVerified: true,
       },
     });
 

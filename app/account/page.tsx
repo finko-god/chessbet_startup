@@ -28,7 +28,34 @@ export default function AccountPage() {
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferError, setTransferError] = useState('');
   const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState<{
+    isVerified: boolean;
+    message: string;
+    requirements?: any;
+  } | null>(null);
   const router = useRouter();
+
+  const checkVerificationStatus = async () => {
+    try {
+      const response = await fetch('/api/stripe/check-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setVerificationStatus(data);
+        // Update user data with verification status
+        if (user) {
+          setUser(prev => prev ? { ...prev, isVerified: data.isVerified } : null);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking verification status:', error);
+    }
+  };
 
   const fetchUserData = async () => {
     try {
@@ -39,6 +66,10 @@ export default function AccountPage() {
       if (response.ok) {
         const userData = await response.json();
         setUser(userData);
+        // If user has a Stripe Connect account, check verification status
+        if (userData.stripeConnectId) {
+          await checkVerificationStatus();
+        }
       } else {
         router.push('/signin');
       }
@@ -100,11 +131,34 @@ export default function AccountPage() {
       });
 
       const { url } = await response.json();
+      // Store the current URL to return to after verification
+      sessionStorage.setItem('returnTo', window.location.href);
       window.location.href = url;
     } catch (error) {
       console.error('Error creating connect account:', error);
     }
   };
+
+  // Check if we're returning from Stripe Connect
+  useEffect(() => {
+    const returnTo = sessionStorage.getItem('returnTo');
+    if (returnTo && window.location.href === returnTo) {
+      sessionStorage.removeItem('returnTo');
+      checkVerificationStatus();
+    }
+  }, []);
+
+  // Add periodic verification check
+  useEffect(() => {
+    if (user?.stripeConnectId) {
+      // Check immediately
+      checkVerificationStatus();
+      
+      // Then check every 30 seconds
+      const interval = setInterval(checkVerificationStatus, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [user?.stripeConnectId]);
 
   const handleTransfer = async () => {
     if (!transferAmount || parseInt(transferAmount) <= 0) {
@@ -195,6 +249,34 @@ export default function AccountPage() {
             </AlertDescription>
           </Alert>
         )}
+
+        {verificationStatus && !verificationStatus.isVerified && (
+          <Alert className="bg-amber-50 border-amber-200">
+            <AlertDescription className="text-amber-800">
+              {verificationStatus.message}
+              {verificationStatus.requirements && (
+                <div className="mt-2 text-sm">
+                  <p className="font-medium">Verification requirements:</p>
+                  <ul className="list-disc pl-4 mt-1">
+                    {!verificationStatus.requirements.charges_enabled && (
+                      <li>Charges capability not enabled</li>
+                    )}
+                    {!verificationStatus.requirements.payouts_enabled && (
+                      <li>Payouts capability not enabled</li>
+                    )}
+                    {verificationStatus.requirements.transfers_capability !== 'active' && (
+                      <li>Transfers capability not active</li>
+                    )}
+                    {verificationStatus.requirements.currently_due?.length > 0 && (
+                      <li>Additional verification required</li>
+                    )}
+                  </ul>
+                </div>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+
         <Card className="bg-card">
           <CardHeader>
             <CardTitle className="text-2xl font-bold text-foreground">Account Information</CardTitle>
@@ -212,8 +294,6 @@ export default function AccountPage() {
             </div>
           </CardContent>
         </Card>
-
-
 
         <Card className="bg-card">
           <CardHeader>
