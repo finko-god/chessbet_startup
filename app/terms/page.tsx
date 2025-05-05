@@ -42,7 +42,7 @@ export default function TermsPage() {
               <div className="space-y-4">
                 <p>Our financial policies include:</p>
                 <ul className="list-disc pl-6 space-y-2">
-                  <li>A fixed commission fee of 1 EUR is charged on all payouts</li>
+                  <li>A fixed commission fee of 2 EUR is charged on all payouts</li>
                   <li>Payouts are processed by the platform within 24 hours</li>
                   <li>Funds may take a few days to reach your bank account</li>
                   <li>New accounts must wait 7 days after their first game before making payouts</li>

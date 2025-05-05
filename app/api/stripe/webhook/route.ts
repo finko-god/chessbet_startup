@@ -74,22 +74,23 @@ export async function POST(request: Request) {
 
     if (user) {
       // Check if the account is fully verified with completed KYC
-      const kycVerified = 
-        account.charges_enabled && 
-        account.payouts_enabled && 
+      const kycVerified =
+        account.charges_enabled &&
+        account.payouts_enabled &&
         account.capabilities?.transfers === 'active' &&
         account.requirements?.eventually_due?.length === 0 &&
         account.requirements?.currently_due?.length === 0 &&
         account.requirements?.past_due?.length === 0;
-      
-      // Update stripeConnectId but don't use kycVerified to block functionality
+
+      // Update stripeConnectId and isVerified status
       await prisma.user.update({
         where: { id: user.id },
-        data: { 
-          stripeConnectId: account.id
+        data: {
+          stripeConnectId: account.id,
+          isVerified: kycVerified
         }
       });
-      
+
       console.log(`User ${user.id} KYC verification status: ${kycVerified}`);
       console.log('Account details:', {
         charges_enabled: account.charges_enabled,
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
   if (event.type === 'person.updated') {
     const person = event.data.object as Stripe.Person;
     const account = person.account as string;
-    
+
     const user = await prisma.user.findFirst({
       where: { stripeConnectId: account }
     });
@@ -114,13 +115,19 @@ export async function POST(request: Request) {
     if (user) {
       // Fetch the account to check overall verification status
       const accountDetails = await stripe.accounts.retrieve(account);
-      const kycVerified = 
-        accountDetails.charges_enabled && 
+      const kycVerified =
+        accountDetails.charges_enabled &&
         accountDetails.payouts_enabled &&
         accountDetails.requirements?.eventually_due?.length === 0 &&
         accountDetails.requirements?.currently_due?.length === 0 &&
         accountDetails.requirements?.past_due?.length === 0;
-      
+
+      // Update isVerified status
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { isVerified: kycVerified }
+      });
+
       console.log(`User ${user.id} person verification updated, KYC status: ${kycVerified}`);
       console.log('Account details:', {
         charges_enabled: accountDetails.charges_enabled,
@@ -134,7 +141,7 @@ export async function POST(request: Request) {
 
   if (event.type === 'payout.failed' || event.type === 'payout.canceled') {
     const payout = event.data.object as Stripe.Payout;
-    
+
     const payoutRecord = await prisma.payout.findFirst({
       where: { stripePayoutId: payout.id }
     });
@@ -155,7 +162,7 @@ export async function POST(request: Request) {
 
   if (event.type === 'payout.paid') {
     const payout = event.data.object as Stripe.Payout;
-    
+
     const payoutRecord = await prisma.payout.findFirst({
       where: { stripePayoutId: payout.id }
     });

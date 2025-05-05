@@ -17,6 +17,7 @@ interface User {
   email: string;
   chessCoin: number;
   stripeConnectId: string | null;
+  isVerified: boolean;
 }
 
 export default function AccountPage() {
@@ -108,6 +109,11 @@ export default function AccountPage() {
   const handleTransfer = async () => {
     if (!transferAmount || parseInt(transferAmount) <= 0) {
       setTransferError('Please enter a valid amount');
+      return;
+    }
+
+    if (!user?.isVerified) {
+      setTransferError('Please complete your account verification first');
       return;
     }
 
@@ -227,8 +233,8 @@ export default function AccountPage() {
                 <Button
                   onClick={() => setIsTransferDialogOpen(true)}
                   className="flex-1 bg-blue-500 hover:bg-blue-600"
-                  disabled={!user.stripeConnectId}
-                  title={!user.stripeConnectId ? "Please connect Stripe account first" : ""}
+                  disabled={!user.stripeConnectId || !user.isVerified}
+                  title={!user.stripeConnectId ? "Please connect Stripe account first" : !user.isVerified ? "Please complete verification first" : ""}
                 >
                   Payout to Bank
                 </Button>
@@ -333,11 +339,11 @@ export default function AccountPage() {
                   placeholder={`Max: ${user.chessCoin} ChessCoins`}
                 />
                 <p className="text-sm text-muted-foreground">
-                  Note: 1 ChessCoin = 1 EUR. A commission fee of 1 EUR will be deducted.
+                  Note: 1 ChessCoin = 1 EUR. A commission fee of 2 EUR will be deducted.
                 </p>
                 {transferAmount && (
                   <p className="text-sm">
-                    You will receive: {Math.max(0, parseInt(transferAmount) - 1)} EUR in your bank account
+                    You will receive: {Math.max(0, parseInt(transferAmount) - 2)} EUR in your bank account
                   </p>
                 )}
               </div>

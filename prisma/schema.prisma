@@ -20,6 +20,7 @@ model User {
   name            String?
   chessCoin       Int       @default(0)
   stripeConnectId String?   @unique // Stripe Connect account ID
+  isVerified      Boolean   @default(false) // Whether the user has completed KYC verification
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   gamesCreated    Game[]    @relation("GameCreator")

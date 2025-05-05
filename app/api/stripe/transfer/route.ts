@@ -29,7 +29,8 @@ export async function POST(request: Request) {
       select: { 
         id: true,
         chessCoin: true,
-        stripeConnectId: true
+        stripeConnectId: true,
+        isVerified: true
       }
     });
 
@@ -43,6 +44,12 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    if (!user.isVerified) {
+      return NextResponse.json({ 
+        error: 'Please complete your account verification first' 
+      }, { status: 400 });
+    }
+
     if (amount > user.chessCoin) {
       return NextResponse.json(
         { error: 'Insufficient balance' },
@@ -50,8 +57,8 @@ export async function POST(request: Request) {
       );
     }
 
-    // Calculate amount after commission (1 EUR)
-    const commission = 1;
+    // Calculate amount after commission (2 EUR)
+    const commission = 2;
     const amountAfterCommission = (amount - commission) * 100;
 
     try {
@@ -60,7 +67,7 @@ export async function POST(request: Request) {
         amount: amountAfterCommission,
         currency: 'eur',
         destination: user.stripeConnectId,
-        description: `Transfer of ${amount} ChessCoins (${amountAfterCommission/100} EUR after 1 EUR commission)`
+        description: `Transfer of ${amount} ChessCoins (${amountAfterCommission/100} EUR after ${commission} EUR commission)`
       });
 
       // Update user's balance and create transfer record

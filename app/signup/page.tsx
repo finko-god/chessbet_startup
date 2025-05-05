@@ -14,12 +14,45 @@ export default function SignUpPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string;
+    email?: string;
+    password?: string;
+  }>({});
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const router = useRouter();
+
+  const validateForm = () => {
+    const errors: typeof fieldErrors = {};
+    
+    if (!name.trim()) {
+      errors.name = 'Name is required';
+    }
+    
+    if (!email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errors.email = 'Please enter a valid email address';
+    }
+    
+    if (!password) {
+      errors.password = 'Password is required';
+    } else if (password.length < 6) {
+      errors.password = 'Password must be at least 6 characters long';
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setFieldErrors({});
+
+    if (!validateForm()) {
+      return;
+    }
 
     if (!agreedToTerms) {
       setError('You must agree to the terms and conditions');
@@ -38,13 +71,19 @@ export default function SignUpPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || 'An error occurred during registration');
+        if (data.message) {
+          setError(data.message);
+        } else if (data.error) {
+          setError(data.error);
+        } else {
+          setError('An error occurred during registration');
+        }
         return;
       }
 
       router.push('/signin');
     } catch (error) {
-      console.error('Error signing up:', error)
+      console.error('Error signing up:', error);
       setError('An error occurred. Please try again.');
     }
   };
@@ -64,11 +103,21 @@ export default function SignUpPage() {
                   id="name"
                   type="text"
                   placeholder="Enter your name"
-                  className="bg-input text-foreground placeholder:text-muted-foreground"
+                  className={`bg-input text-foreground placeholder:text-muted-foreground ${
+                    fieldErrors.name ? 'border-red-500 focus:ring-red-500' : ''
+                  }`}
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    if (fieldErrors.name) {
+                      setFieldErrors(prev => ({ ...prev, name: undefined }));
+                    }
+                  }}
                   required
                 />
+                {fieldErrors.name && (
+                  <p className="text-red-500 text-sm mt-1">{fieldErrors.name}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email" className="text-foreground">Email</Label>
@@ -76,11 +125,21 @@ export default function SignUpPage() {
                   id="email"
                   type="email"
                   placeholder="Enter your email"
-                  className="bg-input text-foreground placeholder:text-muted-foreground"
+                  className={`bg-input text-foreground placeholder:text-muted-foreground ${
+                    fieldErrors.email ? 'border-red-500 focus:ring-red-500' : ''
+                  }`}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (fieldErrors.email) {
+                      setFieldErrors(prev => ({ ...prev, email: undefined }));
+                    }
+                  }}
                   required
                 />
+                {fieldErrors.email && (
+                  <p className="text-red-500 text-sm mt-1">{fieldErrors.email}</p>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password" className="text-foreground">Password</Label>
@@ -88,11 +147,21 @@ export default function SignUpPage() {
                   id="password"
                   type="password"
                   placeholder="Enter your password"
-                  className="bg-input text-foreground placeholder:text-muted-foreground"
+                  className={`bg-input text-foreground placeholder:text-muted-foreground ${
+                    fieldErrors.password ? 'border-red-500 focus:ring-red-500' : ''
+                  }`}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (fieldErrors.password) {
+                      setFieldErrors(prev => ({ ...prev, password: undefined }));
+                    }
+                  }}
                   required
                 />
+                {fieldErrors.password && (
+                  <p className="text-red-500 text-sm mt-1">{fieldErrors.password}</p>
+                )}
               </div>
 
               <div className="space-y-4">
@@ -119,7 +188,12 @@ export default function SignUpPage() {
                 </div>
               </div>
 
-              {error && <p className="text-red-500 text-sm">{error}</p>}
+              {error && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+                  <p className="text-red-600 text-sm">{error}</p>
+                </div>
+              )}
+              
               <Button type="submit" className="w-full bg-primary text-primary-foreground hover:bg-primary/90">
                 Create Account
               </Button>
