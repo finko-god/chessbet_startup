@@ -18,17 +18,17 @@ export const metadata: Metadata = {
   ],
   icons: {
     icon: [
-      { url: '/icon4.png', sizes: '32x32', type: 'image/png' },
-      { url: '/icon4.png', sizes: '16x16', type: 'image/png' },
+      { url: '/Chessbet.png', sizes: '32x32', type: 'image/png' },
+      { url: '/Chessbet.png', sizes: '16x16', type: 'image/png' },
     ],
-    shortcut: '/icon4.png',
+    shortcut: '/Chessbet.png',
     apple: [
-      { url: '/icon4.png', sizes: '180x180', type: 'image/png' },
+      { url: '/Chessbet.png', sizes: '180x180', type: 'image/png' },
     ],
     other: [
       {
         rel: 'mask-icon',
-        url: '/icon4.png',
+        url: '/Chessbet.png',
       },
     ],
   },
@@ -40,7 +40,7 @@ export const metadata: Metadata = {
     siteName: "ChessBet",
     images: [
       {
-        url: "/icon4.png",
+        url: "/Chessbet.png",
         width: 512,
         height: 512,
         alt: "ChessBet Logo",
@@ -52,7 +52,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "ChessBet",
     description: "Join ChessBet to bet on live chess games and win ChessCoins. Fast payouts. Fun competition. Chess, but with stakes.",
-    images: ["/icon4.png"],
+    images: ["/Chessbet.png"],
     creator: "@finkonoryy",
   },
   metadataBase: new URL("https://chessbet.co"),
